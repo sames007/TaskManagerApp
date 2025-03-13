@@ -4,9 +4,9 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="dropZone" alignment="CENTER" spacing="10" style="-fx-border-color: #cccccc; -fx-border-style: dashed; -fx-border-width: 2; -fx-padding: 20;" xmlns:fx="http://javafx.com/fxml" fx:controller="edu.farmingdale.taskmanagerapp.FileProcessorController">
+<VBox fx:id="dropZone" alignment="CENTER" spacing="10" style="-fx-border-color: #ffffff; -fx-border-style: dashed; -fx-border-width: 2; -fx-padding: 20;" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.FileProcessorController">
     <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
-    <Label fx:id="dropLabel" text="Drag and drop task file here" style="-fx-font-size: 16px;"/>
+    <Label fx:id="dropLabel" style="-fx-font-size: 16px;" text="Drag and drop task file here" textFill="WHITE" />
 </VBox>
