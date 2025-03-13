@@ -7,27 +7,31 @@ import java.time.LocalTime;
  * Simple model class representing a Task.
  */
 public class Task {
+    private int taskID;
     private String description;
     private LocalDate dueDate;
-    private LocalTime dueTime; // Stores time in 24-hour format
+    private LocalTime dueTime;
     private String priority;
     private String status;
     private String category;
     private LocalDate reminder;
 
-    /**
-     * Constructs a new Task with description, due date, and priority.
-     * Status is set to "Pending" by default.
-     */
-    public Task(String description, LocalDate dueDate, String priority) {
+    public Task(String description, LocalDate dueDate, LocalTime dueTime, String priority) {
         this.description = description;
         this.dueDate = dueDate;
+        this.dueTime = dueTime;
         this.priority = priority;
         this.status = "Pending";
     }
 
-    // Getters and setters for each property
 
+    // Getters and setters
+    public int getTaskID() {
+        return taskID;
+    }
+    public void setTaskID(int taskID) {
+        this.taskID = taskID;
+    }
     public String getDescription() {
         return description;
     }

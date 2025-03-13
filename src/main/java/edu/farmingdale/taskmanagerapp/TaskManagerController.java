@@ -32,23 +32,22 @@ public class TaskManagerController {
     // Observable list to hold tasks for the TableView
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
 
+    private DatabaseManager dbManager;
+
+    public void setDatabaseManager(DatabaseManager dbManager) {
+        this.dbManager = dbManager;
+    }
+
     /**
      * Initializes the controller after the FXML file is loaded.
      * Sets up the ComboBoxes, TableView columns, and Spinners.
      */
     @FXML
     public void initialize() {
+
         // Set up options for priority and category ComboBoxes
         priorityComboBox.setItems(FXCollections.observableArrayList("High", "Medium", "Low"));
         categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal"));
-
-        // Bind table columns to the properties of Task objects
-        taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
-        dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
-        timeColumn.setCellValueFactory(new PropertyValueFactory<>("dueTime"));
-        priorityColumn.setCellValueFactory(new PropertyValueFactory<>("priority"));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
-        taskTable.setItems(tasks);
 
         // Set up hour spinner (1-12) and make it editable
         SpinnerValueFactory<Integer> hourFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12, 12);
@@ -63,6 +62,18 @@ public class TaskManagerController {
         // Set up AM/PM ComboBox with default value "AM"
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
+        taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
+        dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
+        timeColumn.setCellValueFactory(new PropertyValueFactory<>("dueTime"));
+        priorityColumn.setCellValueFactory(new PropertyValueFactory<>("priority"));
+        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        taskTable.setItems(tasks); // Ensure tasks are set for the table
+
+        if (dbManager != null) {
+            dbManager.loadTasks(tasks);
+            taskTable.refresh();
+        }
     }
 
     /**
@@ -102,13 +113,21 @@ public class TaskManagerController {
         LocalTime dueTime = LocalTime.of(convertedHour, minute);
 
         // Create a new Task with the provided information
-        Task task = new Task(description, dueDate, priority);
-        task.setDueTime(dueTime);
+        Task task = new Task(description, dueDate, dueTime, priority);
         task.setCategory(category);
         task.setReminder(reminder);
+
         tasks.add(task);
 
-        // Clear input fields after adding the task
+        System.out.println("Tasks List: " + tasks); // Verify tasks are added to the list
+
+        try {
+            dbManager.addTask(task);
+        } catch (Exception e) {
+            System.out.println("Error saving task to database: " + e.getMessage());
+            showAlert("Error saving task to database.");
+        }
+
         clearInputs();
     }
 
@@ -138,8 +157,42 @@ public class TaskManagerController {
             categoryComboBox.setValue(selectedTask.getCategory());
             reminderDatePicker.setValue(selectedTask.getReminder());
 
-            // Remove the task to be replaced by the updated version
-            tasks.remove(selectedTask);
+            // Update task when "Add Task" button is clicked again
+            taskInput.setOnAction(event -> {
+                // Get updated input values
+                String updatedDescription = taskInput.getText().trim();
+                LocalDate updatedDueDate = dueDatePicker.getValue();
+                Integer updatedHour = hourSpinner.getValue();
+                Integer updatedMinute = minuteSpinner.getValue();
+                String updatedAmPm = amPmComboBox.getValue();
+                String updatedPriority = priorityComboBox.getValue();
+                String updatedCategory = categoryComboBox.getValue();
+                LocalDate updatedReminder = reminderDatePicker.getValue();
+
+                // Convert 12-hour time to 24-hour format
+                int updatedConvertedHour = updatedHour;
+                if ("PM".equals(updatedAmPm) && updatedHour != 12) {
+                    updatedConvertedHour += 12;
+                } else if ("AM".equals(updatedAmPm) && updatedHour == 12) {
+                    updatedConvertedHour = 0;
+                }
+                LocalTime updatedDueTime = LocalTime.of(updatedConvertedHour, updatedMinute);
+
+                // Update the task
+                selectedTask.setDescription(updatedDescription);
+                selectedTask.setDueDate(updatedDueDate);
+                selectedTask.setDueTime(updatedDueTime);
+                selectedTask.setPriority(updatedPriority);
+                selectedTask.setCategory(updatedCategory);
+                selectedTask.setReminder(updatedReminder);
+
+                // Update task in database
+                if (dbManager != null) {
+                    dbManager.updateTask(selectedTask);
+                }
+                // Refresh table
+                taskTable.refresh();
+            });
         } else {
             showAlert("Please select a task to edit");
         }
@@ -169,6 +222,11 @@ public class TaskManagerController {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
             tasks.remove(selectedTask);
+
+            // Delete task from database
+            if (dbManager != null) {
+                dbManager.deleteTask(selectedTask.getTaskID());
+            }
         } else {
             showAlert("Please select a task to delete");
         }
@@ -206,7 +264,19 @@ public class TaskManagerController {
      * @param task the task to add
      */
     public void addImportedTask(Task task) {
-        tasks.add(task);
-        taskTable.refresh();
+        if (task != null) {
+            tasks.add(task);
+            if (dbManager != null) {
+                try {
+                    dbManager.addTask(task);
+                } catch (Exception e) {
+                    System.out.println("Error saving task to database: " + e.getMessage());
+                    showAlert("Error saving task to database.");
+                }
+            }
+            taskTable.refresh();
+        } else {
+            System.out.println("Attempted to add a null task.");
+        }
     }
 }

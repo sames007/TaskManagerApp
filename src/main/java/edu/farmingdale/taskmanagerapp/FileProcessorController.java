@@ -11,7 +11,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+
 
 /**
  * Controller that handles file drag and drop to import tasks.
@@ -28,6 +30,13 @@ public class FileProcessorController {
     public void initialize() {
         setupDragAndDrop();
     }
+
+    private DatabaseManager dbManager;
+
+    public void setDatabaseManager(DatabaseManager dbManager) {
+        this.dbManager = dbManager;
+    }
+
 
     /**
      * Allows the main TaskManagerController to be set so imported tasks can be added.
@@ -88,23 +97,27 @@ public class FileProcessorController {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             StringBuilder content = new StringBuilder();
             String line;
-            // Read each line and append it to content
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
             }
-            // Process the entire file content
             processFileContent(content.toString());
         } catch (IOException e) {
             e.printStackTrace();
             showError("Error reading file: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Error processing file: " + e.getMessage());
         }
     }
+
 
     /**
      * Splits the file content into sections, extracts task information,
      * and creates tasks in the TaskManagerController.
      * @param content the complete file content as a String
      */
+    private LocalTime dueTime; // Add this field to processFileContent method scope
+
     private void processFileContent(String content) {
         // Split the file into sections separated by blank lines
         String[] sections = content.split("\n\n");
@@ -115,6 +128,7 @@ public class FileProcessorController {
             LocalDate deadline = null;
             String description = "";
             String priority = "Medium"; // Default priority
+            dueTime = null; // Reset dueTime for each task
             for (String line : lines) {
                 if (line.startsWith("Task Name:")) {
                     taskName = line.replace("Task Name:", "").trim();
@@ -128,15 +142,42 @@ public class FileProcessorController {
                     }
                 } else if (line.startsWith("Description:")) {
                     description = line.replace("Description:", "").trim();
+                } else if (line.startsWith("Priority:")) {
+                    priority = line.replace("Priority:", "").trim();
+                } else if (line.startsWith("Due Time:")) {
+                    String timeStr = line.replace("Due Time:", "").trim();
+                    try {
+                        String[] timeParts = timeStr.split(":");
+                        int hour = Integer.parseInt(timeParts[0]);
+                        int minute = Integer.parseInt(timeParts[1]);
+                        dueTime = LocalTime.of(hour, minute);
+                    } catch (Exception e) {
+                        // Handle invalid time format
+                        dueTime = LocalTime.of(0, 0); // Default to 00:00 if parsing fails
+                    }
                 }
             }
             // Create and add the task if taskName and deadline are valid
             if (!taskName.isEmpty() && deadline != null) {
-                Task task = new Task(taskName + (description.isEmpty() ? "" : " - " + description), deadline, priority);
+                Task task = new Task(
+                        taskName + (description.isEmpty() ? "" : " - " + description),
+                        deadline,
+                        dueTime != null ? dueTime : LocalTime.of(0, 0), // Use parsed due time if available
+                        priority
+                );
+
+                // Add task to TaskManagerController
                 taskManagerController.addImportedTask(task);
+
+                // Save task to database
+                if (dbManager != null) {
+                    dbManager.addTask(task);
+                }
             }
         }
     }
+
+
 
     /**
      * Shows an error alert with the provided message.

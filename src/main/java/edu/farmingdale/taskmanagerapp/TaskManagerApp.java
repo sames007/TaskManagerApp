@@ -6,16 +6,26 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+
 /**
  * Main application class that loads the FXML view,
  * applies the external CSS file for styling, and shows the stage.
  */
 public class TaskManagerApp extends Application {
-
     @Override
     public void start(Stage primaryStage) throws Exception {
         // Load the main FXML layout
-        Parent root = FXMLLoader.load(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
+
+        // Create a DatabaseManager instance
+        DatabaseManager dbManager = new DatabaseManager();
+
+        // Load the FXML file
+        Parent root = loader.load();
+
+        // Get the TaskManagerController instance
+        TaskManagerController taskManagerController = loader.getController();
+        taskManagerController.setDatabaseManager(dbManager);
 
         // Create a new scene with width 800 and height 600
         Scene scene = new Scene(root, 800, 600);
@@ -33,4 +43,3 @@ public class TaskManagerApp extends Application {
         launch(args);
     }
 }
-
