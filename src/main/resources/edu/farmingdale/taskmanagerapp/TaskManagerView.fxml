@@ -9,45 +9,65 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="551.0" prefWidth="1197.0" spacing="10" style="-fx-background-color: #3597e8;" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.TaskManagerController">
-    <padding>
-        <Insets bottom="20" left="20" right="20" top="20" />
-    </padding>
-    <HBox alignment="CENTER" spacing="10">
-        <Label style="-fx-font-size: 40px; -fx-font-weight: bold;" text="Task Management System" textFill="WHITE" />
-    </HBox>
-    <HBox spacing="10">
-        <TextField fx:id="taskInput" onAction="#addTask" promptText="Enter task description" HBox.hgrow="ALWAYS" />
-        <DatePicker fx:id="dueDatePicker" promptText="Due date" />
-        <HBox spacing="5">
-            <Spinner fx:id="hourSpinner" prefWidth="60" />
-            <Label style="-fx-font-size: 16px; -fx-alignment: CENTER;" text=":" />
-            <Spinner fx:id="minuteSpinner" prefWidth="60" />
-            <ComboBox fx:id="amPmComboBox" prefWidth="80" promptText="AM/PM" />
+<BorderPane xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="edu.farmingdale.taskmanagerapp.TaskManagerController"
+            styleClass="root">
+    <top>
+        <VBox spacing="10" alignment="CENTER" BorderPane.alignment="CENTER" styleClass="header-container">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+            <HBox alignment="CENTER">
+                <Label text="Task Management System" styleClass="header-label"/>
+            </HBox>
+            <HBox spacing="10" styleClass="input-container">
+                <TextField fx:id="taskInput" promptText="Enter task description" HBox.hgrow="ALWAYS" styleClass="task-input"/>
+                <DatePicker fx:id="dueDatePicker" promptText="Due date" styleClass="date-picker"/>
+                <HBox spacing="5" styleClass="time-input">
+                    <Spinner fx:id="hourSpinner" prefWidth="60" styleClass="time-spinner"/>
+                    <Label text=":" styleClass="time-separator"/>
+                    <Spinner fx:id="minuteSpinner" prefWidth="60" styleClass="time-spinner"/>
+                    <ComboBox fx:id="amPmComboBox" prefWidth="120" promptText="AM/PM" styleClass="combo-box"/>
+                </HBox>
+                <ComboBox fx:id="priorityComboBox" promptText="Priority" styleClass="combo-box"/>
+                <ComboBox fx:id="categoryComboBox" promptText="Category" styleClass="combo-box"/>
+                <DatePicker fx:id="reminderDatePicker" promptText="Reminder Date" styleClass="date-picker"/>
+                <Button text="Add Task" onAction="#addTask" defaultButton="true" styleClass="action-button"/>
+                <Button text="Edit Task" onAction="#editTask" styleClass="action-button"/>
+                <Button text="Open AI Chat" onAction="#openChatWindow" styleClass="action-button"/>
+            </HBox>
+        </VBox>
+    </top>
+    <center>
+        <HBox spacing="10" BorderPane.alignment="CENTER" styleClass="center-container">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+            <TableView fx:id="taskTable" prefWidth="600" HBox.hgrow="ALWAYS" styleClass="task-table">
+                <columns>
+                    <TableColumn fx:id="taskColumn" text="Task" prefWidth="150"/>
+                    <TableColumn fx:id="dueDateColumn" text="Due Date" prefWidth="100"/>
+                    <TableColumn fx:id="timeColumn" text="Time" prefWidth="100"/>
+                    <TableColumn fx:id="priorityColumn" text="Priority" prefWidth="100"/>
+                    <TableColumn fx:id="statusColumn" text="Status" prefWidth="100"/>
+                </columns>
+            </TableView>
+            <VBox spacing="10" alignment="CENTER" styleClass="drag-drop-pane">
+                <Label text="Drag and drop task file here" fx:id="dropLabel" styleClass="drag-drop-label"/>
+            </VBox>
+            <VBox fx:id="agendaContainer" spacing="10" alignment="CENTER" prefWidth="400" styleClass="agenda-container">
+                <Label text="Agenda" styleClass="agenda-header"/>
+            </VBox>
         </HBox>
-        <ComboBox fx:id="priorityComboBox" promptText="Priority" />
-        <ComboBox fx:id="categoryComboBox" promptText="Category" />
-        <DatePicker fx:id="reminderDatePicker" promptText="Reminder Date" />
-        <Button defaultButton="true" onAction="#addTask" text="Add Task" />
-        <Button onAction="#editTask" text="Edit Task" />
-    </HBox>
-    <HBox spacing="10.0" VBox.vgrow="ALWAYS">
-        <TableView fx:id="taskTable" maxWidth="-Infinity" prefHeight="376.0" prefWidth="885.0" HBox.hgrow="ALWAYS">
-            <columns>
-                <TableColumn fx:id="taskColumn" prefWidth="200" text="Task" />
-                <TableColumn fx:id="dueDateColumn" prefWidth="124.60940551757812" text="Due Date" />
-                <TableColumn fx:id="timeColumn" prefWidth="118.40625" text="Time" />
-                <TableColumn fx:id="priorityColumn" prefWidth="221.24325561523438" text="Priority" />
-                <TableColumn fx:id="statusColumn" prefWidth="254.2568359375" text="Status" />
-            </columns>
-        </TableView>
-        <fx:include source="FileProcessorView.fxml" />
-    </HBox>
-    <HBox alignment="CENTER_RIGHT" spacing="10.0">
-        <Button onAction="#markTaskComplete" text="Mark Complete" />
-        <Button onAction="#deleteTask" text="Delete Task" />
-    </HBox>
-</VBox>
+    </center>
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_RIGHT" styleClass="bottom-bar">
+            <Button text="Mark Complete" onAction="#markTaskComplete" styleClass="action-button"/>
+            <Button text="Delete Task" onAction="#deleteTask" styleClass="action-button"/>
+        </HBox>
+    </bottom>
+</BorderPane>

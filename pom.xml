@@ -15,6 +15,13 @@
         <junit.version>5.10.2</junit.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jfxtras-releases</id>
+            <url>https://oss.sonatype.org/content/repositories/releases/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -31,8 +38,6 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.32</version>
         </dependency>
-
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -44,6 +49,11 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jfxtras</groupId>
+            <artifactId>jfxtras-agenda</artifactId>
+            <version>17-r1</version>
         </dependency>
     </dependencies>
 
@@ -64,11 +74,9 @@
                 <version>0.0.8</version>
                 <executions>
                     <execution>
-                        <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>edu.farmingdale.taskmanagerapp/edu.farmingdale.taskmanagerapp.HelloApplication
-                            </mainClass>
+                            <mainClass>edu.farmingdale.taskmanagerapp/edu.farmingdale.taskmanagerapp.HelloApplication</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>

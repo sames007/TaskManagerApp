@@ -3,9 +3,20 @@ package edu.farmingdale.taskmanagerapp;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import jfxtras.scene.control.agenda.Agenda;
+import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
+
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -29,22 +40,34 @@ public class TaskManagerController {
     @FXML private TableColumn<Task, String> priorityColumn;
     @FXML private TableColumn<Task, String> statusColumn;
 
+    // Container for the Agenda control (set in FXML)
+    @FXML private VBox agendaContainer;
+
+    // Rename JFXtras Agenda control to "agenda"
+    private Agenda agenda;
+
     // Observable list to hold tasks for the TableView
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
 
     private DatabaseManager dbManager;
 
+    // Field to hold the task that is currently being edited (if any)
+    private Task currentEditingTask = null;
+
+    /**
+     * Setter for DatabaseManager instance.
+     * @param dbManager the DatabaseManager to use for DB operations.
+     */
     public void setDatabaseManager(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
 
     /**
      * Initializes the controller after the FXML file is loaded.
-     * Sets up the ComboBoxes, TableView columns, and Spinners.
+     * Sets up the ComboBoxes, TableView columns, Spinners, and agenda.
      */
     @FXML
     public void initialize() {
-
         // Set up options for priority and category ComboBoxes
         priorityComboBox.setItems(FXCollections.observableArrayList("High", "Medium", "Low"));
         categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal"));
@@ -62,17 +85,54 @@ public class TaskManagerController {
         // Set up AM/PM ComboBox with default value "AM"
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
+
+        // Set up the TableView columns with property mappings
         taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
         timeColumn.setCellValueFactory(new PropertyValueFactory<>("dueTime"));
         priorityColumn.setCellValueFactory(new PropertyValueFactory<>("priority"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        taskTable.setItems(tasks); // Ensure tasks are set for the table
+        // Bind the observable list of tasks to the TableView
+        taskTable.setItems(tasks);
 
+        // Load tasks from the database if available
         if (dbManager != null) {
             dbManager.loadTasks(tasks);
             taskTable.refresh();
+        }
+
+        // --- Create and add the Agenda control programmatically, now named "agenda" ---
+        agenda = new Agenda();
+        agenda.setPrefHeight(500);
+        agenda.setPrefWidth(380);
+        // Set additional properties on the agenda control
+        agenda.setAllowDragging(true);
+        agenda.setAllowResize(true);
+
+        // Add the agenda control to the calendar container in the UI
+        agendaContainer.getChildren().add(agenda);
+
+        // Initialize the agenda appointments based on current tasks
+        refreshAgendaAppointments();
+    }
+
+    /**
+     * Refreshes the Agenda control with appointments based on the tasks list.
+     */
+    private void refreshAgendaAppointments() {
+        // Clear any existing appointments
+        agenda.appointments().clear();
+        // Create an appointment for each task
+        for (Task task : tasks) {
+            LocalDateTime start = LocalDateTime.of(task.getDueDate(), task.getDueTime());
+            LocalDateTime end = start.plusHours(1);
+            AppointmentImplLocal appointment = new AppointmentImplLocal()
+                    .withStartLocalDateTime(start)
+                    .withEndLocalDateTime(end)
+                    .withSummary(task.getDescription())
+                    .withDescription("Priority: " + task.getPriority());
+            agenda.appointments().add(appointment);
         }
     }
 
@@ -93,7 +153,8 @@ public class TaskManagerController {
         LocalDate reminder = reminderDatePicker.getValue();
 
         // Check if any required field is missing
-        if (description.isEmpty() || dueDate == null || hour == null || minute == null || amPm == null || priority == null || category == null) {
+        if (description.isEmpty() || dueDate == null || hour == null || minute == null
+                || amPm == null || priority == null || category == null) {
             showAlert("Please fill in all required fields (Task, Due Date, Time, Priority, Category)");
             return;
         }
@@ -103,23 +164,17 @@ public class TaskManagerController {
             return;
         }
 
-        // Convert 12-hour time to 24-hour format
-        int convertedHour = hour;
-        if ("PM".equals(amPm) && hour != 12) {
-            convertedHour += 12;
-        } else if ("AM".equals(amPm) && hour == 12) {
-            convertedHour = 0;
-        }
-        LocalTime dueTime = LocalTime.of(convertedHour, minute);
+        // Convert 12-hour time to 24-hour format using helper method
+        LocalTime dueTime = convertToLocalTime(hour, minute, amPm);
 
         // Create a new Task with the provided information
         Task task = new Task(description, dueDate, dueTime, priority);
         task.setCategory(category);
         task.setReminder(reminder);
 
+        // Add task to the observable list and database
         tasks.add(task);
-
-        System.out.println("Tasks List: " + tasks); // Verify tasks are added to the list
+        System.out.println("Tasks List: " + tasks);
 
         try {
             dbManager.addTask(task);
@@ -128,74 +183,90 @@ public class TaskManagerController {
             showAlert("Error saving task to database.");
         }
 
+        // Refresh the agenda to include the new task
+        refreshAgendaAppointments();
+
+        // Clear the input fields for the next entry
         clearInputs();
     }
 
     /**
-     * Called when the user clicks the "Edit Task" button.
-     * Loads the selected task's data into the input fields for editing.
+     * Handles the editing of a task. Uses an editing mode so that the user first selects
+     * a task to edit and then confirms the changes by clicking the same "Edit Task" button.
      */
     @FXML
     private void editTask() {
-        Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
-        if (selectedTask != null) {
-            // Preload task data into input fields
-            taskInput.setText(selectedTask.getDescription());
-            dueDatePicker.setValue(selectedTask.getDueDate());
-
-            // Convert the stored 24-hour time to 12-hour format for display
-            LocalTime time = selectedTask.getDueTime();
-            int hour24 = time.getHour();
-            int displayHour = (hour24 == 0 || hour24 == 12) ? 12 : hour24 % 12;
-            String amPm = (hour24 < 12) ? "AM" : "PM";
-
-            hourSpinner.getValueFactory().setValue(displayHour);
-            minuteSpinner.getValueFactory().setValue(time.getMinute());
-            amPmComboBox.setValue(amPm);
-
-            priorityComboBox.setValue(selectedTask.getPriority());
-            categoryComboBox.setValue(selectedTask.getCategory());
-            reminderDatePicker.setValue(selectedTask.getReminder());
-
-            // Update task when "Add Task" button is clicked again
-            taskInput.setOnAction(event -> {
-                // Get updated input values
-                String updatedDescription = taskInput.getText().trim();
-                LocalDate updatedDueDate = dueDatePicker.getValue();
-                Integer updatedHour = hourSpinner.getValue();
-                Integer updatedMinute = minuteSpinner.getValue();
-                String updatedAmPm = amPmComboBox.getValue();
-                String updatedPriority = priorityComboBox.getValue();
-                String updatedCategory = categoryComboBox.getValue();
-                LocalDate updatedReminder = reminderDatePicker.getValue();
-
-                // Convert 12-hour time to 24-hour format
-                int updatedConvertedHour = updatedHour;
-                if ("PM".equals(updatedAmPm) && updatedHour != 12) {
-                    updatedConvertedHour += 12;
-                } else if ("AM".equals(updatedAmPm) && updatedHour == 12) {
-                    updatedConvertedHour = 0;
-                }
-                LocalTime updatedDueTime = LocalTime.of(updatedConvertedHour, updatedMinute);
-
-                // Update the task
-                selectedTask.setDescription(updatedDescription);
-                selectedTask.setDueDate(updatedDueDate);
-                selectedTask.setDueTime(updatedDueTime);
-                selectedTask.setPriority(updatedPriority);
-                selectedTask.setCategory(updatedCategory);
-                selectedTask.setReminder(updatedReminder);
-
-                // Update task in database
-                if (dbManager != null) {
-                    dbManager.updateTask(selectedTask);
-                }
-                // Refresh table
-                taskTable.refresh();
-            });
+        // If not in editing mode, load the selected task into the input fields.
+        if (currentEditingTask == null) {
+            Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
+            if (selectedTask != null) {
+                currentEditingTask = selectedTask;
+                populateFields(currentEditingTask);
+                showAlert("Editing mode: modify the fields and click 'Edit Task' again to save changes.");
+            } else {
+                showAlert("Please select a task to edit");
+            }
         } else {
-            showAlert("Please select a task to edit");
+            // If in editing mode, update the task with the new values.
+            updateTask(currentEditingTask);
+            if (dbManager != null) {
+                dbManager.updateTask(currentEditingTask);
+            }
+            taskTable.refresh();
+            refreshAgendaAppointments();
+            showAlert("Task updated successfully.");
+            currentEditingTask = null;
+            clearInputs();
         }
+    }
+
+    /**
+     * Helper method to populate the input fields with the task data.
+     * @param task the task whose data is to be loaded
+     */
+    private void populateFields(Task task) {
+        taskInput.setText(task.getDescription());
+        dueDatePicker.setValue(task.getDueDate());
+
+        // Convert stored 24-hour time to 12-hour format
+        LocalTime time = task.getDueTime();
+        int hour24 = time.getHour();
+        int displayHour = (hour24 == 0 || hour24 == 12) ? 12 : hour24 % 12;
+        String amPm = (hour24 < 12) ? "AM" : "PM";
+
+        hourSpinner.getValueFactory().setValue(displayHour);
+        minuteSpinner.getValueFactory().setValue(time.getMinute());
+        amPmComboBox.setValue(amPm);
+
+        priorityComboBox.setValue(task.getPriority());
+        categoryComboBox.setValue(task.getCategory());
+        reminderDatePicker.setValue(task.getReminder());
+    }
+
+    /**
+     * Helper method to update a task with data from the input fields.
+     * @param task the task to update
+     */
+    private void updateTask(Task task) {
+        String updatedDescription = taskInput.getText().trim();
+        LocalDate updatedDueDate = dueDatePicker.getValue();
+        Integer updatedHour = hourSpinner.getValue();
+        Integer updatedMinute = minuteSpinner.getValue();
+        String updatedAmPm = amPmComboBox.getValue();
+        String updatedPriority = priorityComboBox.getValue();
+        String updatedCategory = categoryComboBox.getValue();
+        LocalDate updatedReminder = reminderDatePicker.getValue();
+
+        // Convert 12-hour time to 24-hour format using helper method
+        LocalTime updatedDueTime = convertToLocalTime(updatedHour, updatedMinute, updatedAmPm);
+
+        // Update the task properties
+        task.setDescription(updatedDescription);
+        task.setDueDate(updatedDueDate);
+        task.setDueTime(updatedDueTime);
+        task.setPriority(updatedPriority);
+        task.setCategory(updatedCategory);
+        task.setReminder(updatedReminder);
     }
 
     /**
@@ -207,7 +278,8 @@ public class TaskManagerController {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
             selectedTask.setStatus("Completed");
-            taskTable.refresh(); // Refresh the table to update the status display
+            taskTable.refresh();
+            refreshAgendaAppointments();
         } else {
             showAlert("Please select a task to mark as complete");
         }
@@ -222,11 +294,10 @@ public class TaskManagerController {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
             tasks.remove(selectedTask);
-
-            // Delete task from database
             if (dbManager != null) {
                 dbManager.deleteTask(selectedTask.getTaskID());
             }
+            refreshAgendaAppointments();
         } else {
             showAlert("Please select a task to delete");
         }
@@ -238,7 +309,6 @@ public class TaskManagerController {
     private void clearInputs() {
         taskInput.clear();
         dueDatePicker.setValue(null);
-        // Reset time inputs to defaults
         hourSpinner.getValueFactory().setValue(12);
         minuteSpinner.getValueFactory().setValue(0);
         amPmComboBox.setValue("AM");
@@ -248,7 +318,7 @@ public class TaskManagerController {
     }
 
     /**
-     * Displays an information alert with the provided message.
+     * Helper method to display an information alert with the provided message.
      * @param message the message to display in the alert
      */
     private void showAlert(String message) {
@@ -257,6 +327,23 @@ public class TaskManagerController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    /**
+     * Helper method to convert 12-hour time (with AM/PM) into 24-hour format.
+     * @param hour the hour value (1-12)
+     * @param minute the minute value (0-59)
+     * @param amPm "AM" or "PM"
+     * @return the converted LocalTime
+     */
+    private LocalTime convertToLocalTime(int hour, int minute, String amPm) {
+        int convertedHour = hour;
+        if ("PM".equals(amPm) && hour != 12) {
+            convertedHour += 12;
+        } else if ("AM".equals(amPm) && hour == 12) {
+            convertedHour = 0;
+        }
+        return LocalTime.of(convertedHour, minute);
     }
 
     /**
@@ -275,8 +362,27 @@ public class TaskManagerController {
                 }
             }
             taskTable.refresh();
+            refreshAgendaAppointments();
         } else {
             System.out.println("Attempted to add a null task.");
+        }
+    }
+
+    /**
+     * Opens the AI Chat window when the user clicks the "Open AI Chat" button.
+     */
+    @FXML
+    private void openChatWindow() {
+        try {
+            FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBoxView.fxml"));
+            Parent chatRoot = chatLoader.load();
+            Stage chatStage = new Stage();
+            chatStage.setTitle("AI Chat");
+            Scene chatScene = new Scene(chatRoot);
+            chatStage.setScene(chatScene);
+            chatStage.show();
+        } catch (IOException e) {
+            System.out.println("Error opening chat window: " + e.getMessage());
         }
     }
 }

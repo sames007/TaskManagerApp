@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Button?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="edu.farmingdale.taskmanagerapp.ChatBoxController"
+      spacing="10" alignment="CENTER" prefWidth="400" prefHeight="600">
+    <TextArea fx:id="chatArea" editable="false" wrapText="true" prefHeight="500" />
+    <VBox spacing="5" alignment="CENTER">
+        <TextField fx:id="inputField" promptText="Type your message here..." />
+        <Button fx:id="sendButton" text="Send" />
+    </VBox>
+</VBox>
+
+

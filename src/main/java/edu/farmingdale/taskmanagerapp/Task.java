@@ -16,6 +16,7 @@ public class Task {
     private String category;
     private LocalDate reminder;
 
+    // Constructor for a new task with a default status "Pending"
     public Task(String description, LocalDate dueDate, LocalTime dueTime, String priority) {
         this.description = description;
         this.dueDate = dueDate;
@@ -23,7 +24,6 @@ public class Task {
         this.priority = priority;
         this.status = "Pending";
     }
-
 
     // Getters and setters
     public int getTaskID() {

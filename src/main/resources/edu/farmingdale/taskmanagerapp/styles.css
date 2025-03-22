@@ -1,9 +1,117 @@
+/* Overall Application Styles */
 .root {
     -fx-font-family: "American Typewriter", sans-serif;
     -fx-padding: 20;
-    -fx-background-color: #f5f5f5;
+    -fx-background-color: #3597e8; /* Blue background for the whole scene */
 }
 
+/* Header & Navigation */
+.header-container {
+    -fx-background-color: #2d85c9; /* Darker blue for header */
+    -fx-padding: 10 20 10 20;
+    -fx-alignment: center;
+    -fx-spacing: 10;
+}
+
+.header-label {
+    -fx-font-size: 40px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+/* Input and Controls */
+.input-container {
+    -fx-background-color: #3597e8;
+    -fx-padding: 10;
+    -fx-alignment: center;
+}
+
+.task-input,
+.date-picker,
+.combo-box {
+    -fx-font-size: 14px;
+    -fx-padding: 5;
+    -fx-background-radius: 5;
+}
+
+/* Time Input */
+.time-input {
+    -fx-alignment: center;
+}
+
+.time-spinner {
+    -fx-pref-width: 60;
+}
+
+.time-separator {
+    -fx-font-size: 16px;
+    -fx-alignment: center;
+}
+
+/* Buttons */
+.action-button {
+    -fx-background-color: #4682b4;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+    -fx-background-radius: 5;
+    -fx-padding: 5 10 5 10;
+}
+
+.action-button:hover {
+    -fx-background-color: #4169e1; /* Slightly different blue on hover */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 1);
+}
+
+/* Center Container */
+.center-container {
+    -fx-padding: 20;
+}
+
+/* TableView Styles */
+.task-table {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+}
+
+/* Drag & Drop File Pane */
+.drag-drop-pane {
+    -fx-border-color: white;
+    -fx-border-style: dashed;
+    -fx-border-width: 2;
+    -fx-padding: 20;
+    -fx-background-color: #4682b4;
+}
+
+.drag-drop-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: white;
+}
+
+/* Agenda Container */
+.agenda-container {
+    -fx-padding: 10;  /* Reduced padding to allow the Agenda to expand */
+}
+
+.agenda-header {
+    -fx-font-size: 20px;
+    -fx-text-fill: #333333;
+}
+
+/* Styling for the Agenda control (set programmatically, but these rules apply when the agenda is added to the scene) */
+.agenda {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1;
+    -fx-padding: 0;  /* Ensure no extra padding inside the Agenda */
+}
+
+/* Bottom Bar */
+.bottom-bar {
+    -fx-padding: 10;
+}
+
+/* Additional Styles (Dashboard, Windows, Help, etc.) */
 .dashboard {
     -fx-border-color: black;
     -fx-border-width: 2;
@@ -16,7 +124,6 @@
 .window-header {
     -fx-padding: 5;
     -fx-background-color: #e0e0e0;
-    /* Only a bottom border */
     -fx-border-color: transparent transparent black transparent;
     -fx-border-width: 0 0 1 0;
 }
@@ -34,6 +141,7 @@
     -fx-font-size: 14;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);
 }
+
 .close-button:hover {
     -fx-background-color: #e9ecef;
 }
@@ -44,6 +152,7 @@
     -fx-border-color: transparent transparent black transparent;
     -fx-border-width: 0 0 1 0;
 }
+
 .main-nav .button {
     -fx-padding: 5 15 5 15;
     -fx-border-color: #ccc;
@@ -52,6 +161,7 @@
     -fx-border-radius: 3;
     -fx-cursor: hand;
 }
+
 .main-nav .button:hover {
     -fx-background-color: #f0f0f0;
 }
@@ -61,23 +171,26 @@
     -fx-border-color: transparent transparent #ccc transparent;
     -fx-border-width: 0 0 1 0;
 }
+
 .tab {
     -fx-padding: 5 15 5 15;
     -fx-cursor: hand;
 }
+
 .tab.active {
     -fx-border-color: transparent transparent black transparent;
     -fx-border-width: 0 0 2 0;
     -fx-font-weight: bold;
 }
 
-
+/* Task Card Styles */
 .task-card {
     -fx-background-color: #fff;
     -fx-padding: 15;
     -fx-background-radius: 5;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);
 }
+
 .task-card:hover {
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 6, 0, 0, 4);
 }
@@ -91,6 +204,7 @@
     -fx-border-radius: 3;
     -fx-padding: 10;
 }
+
 .deadline {
     -fx-text-fill: #666;
     -fx-font-size: 14;
@@ -101,6 +215,7 @@
     -fx-border-radius: 3;
     -fx-padding: 10;
 }
+
 .description {
     -fx-text-fill: #444;
     -fx-border-color: #e0e0e0;
@@ -114,6 +229,7 @@
     -fx-line-spacing: 4;
 }
 
+/* Progress Bar */
 .progress-bar {
     -fx-pref-height: 20;
     -fx-border-color: #ccc;
@@ -122,16 +238,19 @@
     -fx-background-radius: 10;
     -fx-border-radius: 10;
 }
+
 .progress {
     -fx-background-color: linear-gradient(to right, #4CAF50, #45a049);
 }
 
+/* Pagination */
 .pagination {
     -fx-padding: 20;
     -fx-alignment: center-right;
     -fx-border-color: #ccc;
     -fx-border-width: 1 0 0 0;
 }
+
 .pagination .button {
     -fx-padding: 5 10 5 10;
     -fx-border-color: #ccc;
@@ -140,19 +259,23 @@
     -fx-border-radius: 3;
     -fx-cursor: hand;
 }
+
 .pagination .button:hover {
     -fx-background-color: #f0f0f0;
 }
+
 .pagination .label {
     -fx-text-fill: #666;
 }
 
+/* Help Section */
 .help-container {
     -fx-padding: 20;
     -fx-background-color: #fff;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 0);
     -fx-background-radius: 8;
 }
+
 .help-header {
     -fx-padding: 20;
     -fx-background-color: #f8f9fa;
@@ -160,30 +283,36 @@
     -fx-border-color: transparent transparent #e9ecef transparent;
     -fx-border-width: 0 0 2 0;
 }
+
 .help-header .label {
     -fx-text-fill: #2c3e50;
-    -fx-font-size: 24;
+    -fx-font-size: 24px;
 }
+
 .back-button {
     -fx-padding: 8 16 8 16;
     -fx-background-color: #4CAF50;
     -fx-text-fill: white;
     -fx-background-radius: 4;
-    -fx-font-size: 14;
+    -fx-font-size: 14px;
     -fx-cursor: hand;
 }
+
 .back-button:hover {
     -fx-background-color: #45a049;
 }
+
 .help-content {
     -fx-padding: 20;
 }
+
 .help-section .label {
     -fx-text-fill: #2c3e50;
     -fx-border-color: transparent transparent #e9ecef transparent;
     -fx-border-width: 0 0 2 0;
     -fx-padding: 0 0 10 0;
 }
+
 .help-card {
     -fx-background-color: #f8f9fa;
     -fx-background-radius: 8;
@@ -192,20 +321,23 @@
     -fx-border-width: 1;
     -fx-border-radius: 8;
 }
+
 .help-card .label {
     -fx-text-fill: #2c3e50;
     -fx-padding: 0 0 15 0;
 }
+
 .help-card .paragraph {
     -fx-text-fill: #495057;
     -fx-padding: 0 0 15 0;
 }
+
 .help-card .list {
     -fx-text-fill: #495057;
     -fx-padding: 0 0 0 20;
 }
 
+/* General Button Styling */
 .button {
     -fx-font-weight: 500;
-    -fx-letter-spacing: 0.5;
 }

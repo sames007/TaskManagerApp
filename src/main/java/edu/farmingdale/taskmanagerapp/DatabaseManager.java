@@ -1,6 +1,6 @@
 package edu.farmingdale.taskmanagerapp;
-import javafx.collections.ObservableList;
 
+import javafx.collections.ObservableList;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalTime;

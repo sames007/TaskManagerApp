@@ -14,7 +14,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
-
 /**
  * Controller that handles file drag and drop to import tasks.
  */
@@ -22,6 +21,7 @@ public class FileProcessorController {
     @FXML private VBox dropZone; // The area where files can be dropped
     @FXML private Label dropLabel; // Label inside the drop zone
     private TaskManagerController taskManagerController; // Reference to main task controller
+    private DatabaseManager dbManager;
 
     /**
      * Called automatically when the FXML file is loaded.
@@ -31,12 +31,13 @@ public class FileProcessorController {
         setupDragAndDrop();
     }
 
-    private DatabaseManager dbManager;
-
+    /**
+     * Sets the DatabaseManager instance.
+     * @param dbManager the DatabaseManager to use.
+     */
     public void setDatabaseManager(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
-
 
     /**
      * Allows the main TaskManagerController to be set so imported tasks can be added.
@@ -48,10 +49,10 @@ public class FileProcessorController {
 
     /**
      * Sets up drag and drop events for the dropZone.
-     * Instead of inline styles, CSS classes are added/removed.
+     * CSS classes are added/removed for visual feedback.
      */
     private void setupDragAndDrop() {
-        // When a file is dragged over the drop zone, accept it if files exist
+        // Accept files if they are dragged over the drop zone
         dropZone.setOnDragOver(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
@@ -59,7 +60,7 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When a file enters the drop zone, add a hover CSS class and change the label text
+        // When file enters drop zone, update style and label text
         dropZone.setOnDragEntered(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 dropZone.getStyleClass().add("drop-zone-hover");
@@ -68,14 +69,14 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When a file leaves the drop zone, remove the hover CSS class and reset the label text
+        // When file leaves, remove hover style and reset label text
         dropZone.setOnDragExited(event -> {
             dropZone.getStyleClass().remove("drop-zone-hover");
             dropLabel.setText("Drag and drop task file here");
             event.consume();
         });
 
-        // When a file is dropped, process the first file and mark the event as completed
+        // When a file is dropped, process the file and mark the event as completed
         dropZone.setOnDragDropped(event -> {
             Dragboard db = event.getDragboard();
             boolean success = false;
@@ -97,6 +98,7 @@ public class FileProcessorController {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             StringBuilder content = new StringBuilder();
             String line;
+            // Read each line from the file
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
             }
@@ -110,14 +112,11 @@ public class FileProcessorController {
         }
     }
 
-
     /**
      * Splits the file content into sections, extracts task information,
      * and creates tasks in the TaskManagerController.
      * @param content the complete file content as a String
      */
-    private LocalTime dueTime; // Add this field to processFileContent method scope
-
     private void processFileContent(String content) {
         // Split the file into sections separated by blank lines
         String[] sections = content.split("\n\n");
@@ -128,7 +127,7 @@ public class FileProcessorController {
             LocalDate deadline = null;
             String description = "";
             String priority = "Medium"; // Default priority
-            dueTime = null; // Reset dueTime for each task
+            LocalTime dueTime = null;
             for (String line : lines) {
                 if (line.startsWith("Task Name:")) {
                     taskName = line.replace("Task Name:", "").trim();
@@ -152,8 +151,8 @@ public class FileProcessorController {
                         int minute = Integer.parseInt(timeParts[1]);
                         dueTime = LocalTime.of(hour, minute);
                     } catch (Exception e) {
-                        // Handle invalid time format
-                        dueTime = LocalTime.of(0, 0); // Default to 00:00 if parsing fails
+                        // Default to 00:00 if parsing fails
+                        dueTime = LocalTime.of(0, 0);
                     }
                 }
             }
@@ -167,17 +166,17 @@ public class FileProcessorController {
                 );
 
                 // Add task to TaskManagerController
-                taskManagerController.addImportedTask(task);
+                if (taskManagerController != null) {
+                    taskManagerController.addImportedTask(task);
+                }
 
-                // Save task to database
+                // Save task to database if available
                 if (dbManager != null) {
                     dbManager.addTask(task);
                 }
             }
         }
     }
-
-
 
     /**
      * Shows an error alert with the provided message.
