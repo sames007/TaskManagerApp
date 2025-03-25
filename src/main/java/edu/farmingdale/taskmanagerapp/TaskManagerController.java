@@ -39,6 +39,8 @@ public class TaskManagerController {
     @FXML private TableColumn<Task, LocalTime> timeColumn; // Column to display task time
     @FXML private TableColumn<Task, String> priorityColumn;
     @FXML private TableColumn<Task, String> statusColumn;
+    @FXML private MenuItem createNewAccount, loginToExisting;
+
 
     // Container for the Agenda control (set in FXML)
     @FXML private VBox agendaContainer;
@@ -383,6 +385,19 @@ public class TaskManagerController {
             chatStage.show();
         } catch (IOException e) {
             System.out.println("Error opening chat window: " + e.getMessage());
+        }
+    }
+    @FXML
+    private void displayLogin(){
+        try {
+            FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
+            Parent loginRoot = loginLoader.load();
+            Stage loginStage = new Stage();
+            Scene loginScene = new Scene(loginRoot);
+            loginStage.setScene(loginScene);
+            loginStage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
