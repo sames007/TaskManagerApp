@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane styleClass="root" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.TaskManagerController">
+    <top>
+        <VBox alignment="CENTER" spacing="10" styleClass="header-container" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20.0" right="20.0" />
+            </padding>
+         <MenuBar>
+           <menus>
+             <Menu mnemonicParsing="false" text="Login">
+               <items>
+                 <MenuItem mnemonicParsing="false" text="Create New Account" />
+                     <MenuItem fx:id="loginToExisting" mnemonicParsing="false" onAction="#displayLogin" text="Login to Existing" />
+               </items>
+             </Menu>
+             <Menu mnemonicParsing="false" text="Edit">
+               <items>
+                 <MenuItem mnemonicParsing="false" text="Delete" />
+               </items>
+             </Menu>
+             <Menu mnemonicParsing="false" text="Help">
+               <items>
+                 <MenuItem mnemonicParsing="false" text="About" />
+               </items>
+             </Menu>
+           </menus>
+            <opaqueInsets>
+               <Insets />
+            </opaqueInsets>
+            <VBox.margin>
+               <Insets />
+            </VBox.margin>
+         </MenuBar>
+            <HBox alignment="CENTER">
+                <Label styleClass="header-label" text="Task Management System" />
+            </HBox>
+            <HBox spacing="10" styleClass="input-container">
+                <TextField fx:id="taskInput" promptText="Enter task description" styleClass="task-input" HBox.hgrow="ALWAYS" />
+                <DatePicker fx:id="dueDatePicker" promptText="Due date" styleClass="date-picker" />
+                <HBox spacing="5" styleClass="time-input">
+                    <Spinner fx:id="hourSpinner" prefWidth="60" styleClass="time-spinner" />
+                    <Label styleClass="time-separator" text=":" />
+                    <Spinner fx:id="minuteSpinner" prefWidth="60" styleClass="time-spinner" />
+                    <ComboBox fx:id="amPmComboBox" prefWidth="120" promptText="AM/PM" styleClass="combo-box" />
+                </HBox>
+                <ComboBox fx:id="priorityComboBox" promptText="Priority" styleClass="combo-box" />
+                <ComboBox fx:id="categoryComboBox" promptText="Category" styleClass="combo-box" />
+                <DatePicker fx:id="reminderDatePicker" promptText="Reminder Date" styleClass="date-picker" />
+                <Button defaultButton="true" onAction="#addTask" styleClass="action-button" text="Add Task" />
+                <Button onAction="#editTask" styleClass="action-button" text="Edit Task" />
+                <Button onAction="#openChatWindow" styleClass="action-button" text="Open AI Chat" />
+            </HBox>
+         <BorderPane.margin>
+            <Insets top="-0.0" />
+         </BorderPane.margin>
+        </VBox>
+    </top>
+    <center>
+        <HBox spacing="10" styleClass="center-container" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" left="20" right="20" top="20" />
+            </padding>
+            <TableView fx:id="taskTable" prefWidth="600" styleClass="task-table" HBox.hgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="taskColumn" prefWidth="150" text="Task" />
+                    <TableColumn fx:id="dueDateColumn" prefWidth="100" text="Due Date" />
+                    <TableColumn fx:id="timeColumn" prefWidth="100" text="Time" />
+                    <TableColumn fx:id="priorityColumn" prefWidth="100" text="Priority" />
+                    <TableColumn fx:id="statusColumn" prefWidth="100" text="Status" />
+                </columns>
+            </TableView>
+            <VBox alignment="CENTER" spacing="10" styleClass="drag-drop-pane">
+                <Label fx:id="dropLabel" styleClass="drag-drop-label" text="Drag and drop task file here" />
+            </VBox>
+            <VBox fx:id="agendaContainer" alignment="CENTER" prefWidth="400" spacing="10" styleClass="agenda-container">
+                <Label styleClass="agenda-header" text="Agenda" />
+            </VBox>
+        </HBox>
+    </center>
+    <bottom>
+        <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="bottom-bar">
+            <Button onAction="#markTaskComplete" styleClass="action-button" text="Mark Complete" />
+            <Button onAction="#deleteTask" styleClass="action-button" text="Delete Task" />
+        </HBox>
+    </bottom>
+</BorderPane>
