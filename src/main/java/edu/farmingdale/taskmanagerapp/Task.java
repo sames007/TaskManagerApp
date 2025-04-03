@@ -189,19 +189,37 @@ public class Task {
             throw new IllegalArgumentException("Invalid priority level. Must be one of: High, Medium, Low");
         }
         // Convert plain text priority to emoji version if needed
-        switch (priority) {
-            case "High":
+        switch (priority.replaceAll("[^a-zA-Z]", "").toLowerCase()) {
+            case "high":
                 this.priority = PRIORITY_HIGH;
                 break;
-            case "Medium":
+            case "medium":
                 this.priority = PRIORITY_MEDIUM;
                 break;
-            case "Low":
+            case "low":
                 this.priority = PRIORITY_LOW;
                 break;
             default:
                 this.priority = priority;
         }
+    }
+
+    /**
+     * Checks if a given priority level is valid
+     * @param priority The priority level to check
+     * @return true if the priority is valid, false otherwise
+     */
+    private boolean isValidPriority(String priority) {
+        if (priority == null) return false;
+        // Remove any emojis and whitespace for comparison
+        String cleanPriority = priority.replaceAll("[^a-zA-Z]", "").toLowerCase();
+        return cleanPriority.equals("high") ||
+               cleanPriority.equals("medium") ||
+               cleanPriority.equals("low") ||
+               priority.equals(PRIORITY_LOW) ||
+               priority.equals(PRIORITY_MEDIUM) ||
+               priority.equals(PRIORITY_HIGH) ||
+               priority.equals(PRIORITY_URGENT);
     }
 
     /**
@@ -244,21 +262,6 @@ public class Task {
         }
         
         return false;
-    }
-
-    /**
-     * Checks if a given priority level is valid
-     * @param priority The priority level to check
-     * @return true if the priority is valid, false otherwise
-     */
-    private boolean isValidPriority(String priority) {
-        return priority.equals("High") ||
-               priority.equals("Medium") ||
-               priority.equals("Low") ||
-               priority.equals(PRIORITY_LOW) ||
-               priority.equals(PRIORITY_MEDIUM) ||
-               priority.equals(PRIORITY_HIGH) ||
-               priority.equals(PRIORITY_URGENT);
     }
 
     /**

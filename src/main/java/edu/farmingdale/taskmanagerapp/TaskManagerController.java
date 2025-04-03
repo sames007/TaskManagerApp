@@ -70,9 +70,14 @@ public class TaskManagerController {
      */
     @FXML
     public void initialize() {
-        // Set up options for priority and category ComboBoxes
-        priorityComboBox.setItems(FXCollections.observableArrayList("High", "Medium", "Low"));
-        categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal"));
+        // Set up options for priority and category ComboBoxes with emojis
+        priorityComboBox.setItems(FXCollections.observableArrayList(
+            "High 🔴", "Medium 🟡", "Low ⚪"
+        ));
+        categoryComboBox.setItems(FXCollections.observableArrayList(
+            "Work 💼", "Personal 👤", "Shopping 🛍️", "Health 🏥", 
+            "Education 📚", "Entertainment 🎮", "Other 📌"
+        ));
 
         // Set up hour spinner (1-12) and make it editable
         SpinnerValueFactory<Integer> hourFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12, 12);
@@ -88,12 +93,55 @@ public class TaskManagerController {
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
 
-        // Set up the TableView columns with property mappings
+        // Set up the TableView columns with property mappings and custom cell factories
         taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         dueDateColumn.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
         timeColumn.setCellValueFactory(new PropertyValueFactory<>("dueTime"));
         priorityColumn.setCellValueFactory(new PropertyValueFactory<>("priority"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        // Add custom cell factories for better visual presentation
+        priorityColumn.setCellFactory(column -> new TableCell<Task, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    // Set background color based on priority
+                    if (item.contains("🔴")) {
+                        setStyle("-fx-background-color: #ffebee;");
+                    } else if (item.contains("🟡")) {
+                        setStyle("-fx-background-color: #fff3e0;");
+                    } else if (item.contains("⚪")) {
+                        setStyle("-fx-background-color: #e8f5e9;");
+                    }
+                }
+            }
+        });
+
+        statusColumn.setCellFactory(column -> new TableCell<Task, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    // Set background color based on status
+                    if (item.contains("✅")) {
+                        setStyle("-fx-background-color: #e8f5e9;");
+                    } else if (item.contains("⏳")) {
+                        setStyle("-fx-background-color: #fff3e0;");
+                    } else if (item.contains("❌")) {
+                        setStyle("-fx-background-color: #ffebee;");
+                    }
+                }
+            }
+        });
 
         // Bind the observable list of tasks to the TableView
         taskTable.setItems(tasks);
@@ -104,19 +152,35 @@ public class TaskManagerController {
             taskTable.refresh();
         }
 
-        // --- Create and add the Agenda control programmatically, now named "agenda" ---
+        // Create and add the Agenda control programmatically
         agenda = new Agenda();
         agenda.setPrefHeight(500);
         agenda.setPrefWidth(380);
-        // Set additional properties on the agenda control
         agenda.setAllowDragging(true);
         agenda.setAllowResize(true);
-
-        // Add the agenda control to the calendar container in the UI
         agendaContainer.getChildren().add(agenda);
 
         // Initialize the agenda appointments based on current tasks
         refreshAgendaAppointments();
+
+        // Add welcome message
+        showWelcomeMessage();
+    }
+
+    private void showWelcomeMessage() {
+        Alert welcomeAlert = new Alert(Alert.AlertType.INFORMATION);
+        welcomeAlert.setTitle("Welcome to Task Manager! 👋");
+        welcomeAlert.setHeaderText("Let's get organized! 🎯");
+        welcomeAlert.setContentText(
+            "Here's what you can do:\n\n" +
+            "📝 Add new tasks with priority and due dates\n" +
+            "✅ Mark tasks as complete\n" +
+            "🗑️ Delete tasks you no longer need\n" +
+            "📅 View your schedule in the agenda\n" +
+            "📊 Track your progress\n\n" +
+            "Need help? Click the Help menu or chat with our AI assistant! 🤖"
+        );
+        welcomeAlert.showAndWait();
     }
 
     /**
@@ -158,17 +222,17 @@ public class TaskManagerController {
             // Check if any required field is missing
             if (description.isEmpty() || dueDate == null || hour == null || minute == null
                     || amPm == null || priority == null || category == null) {
-                showAlert("Please fill in all required fields (Task, Due Date, Time, Priority, Category)");
+                showAlert("⚠️ Please fill in all required fields", "Missing Information");
                 return;
             }
 
             // Ensure the due date is in the future
             if (!dueDate.isAfter(LocalDate.now())) {
-                showAlert("Due date must be in the future.");
+                showAlert("⚠️ Due date must be in the future", "Invalid Date");
                 return;
             }
 
-            // Convert 12-hour time to 24-hour format using helper method
+            // Convert 12-hour time to 24-hour format
             LocalTime dueTime = convertToLocalTime(hour, minute, amPm);
 
             // Create a new Task with the provided information
@@ -178,13 +242,8 @@ public class TaskManagerController {
 
             // Add task to the observable list and database
             tasks.add(task);
-            System.out.println("Task created: " + task.getDescription());
-
             if (dbManager != null) {
                 dbManager.addTask(task);
-                System.out.println("Task saved to database");
-            } else {
-                System.out.println("Warning: DatabaseManager is null");
             }
 
             // Refresh the agenda to include the new task
@@ -193,12 +252,10 @@ public class TaskManagerController {
             // Clear the input fields for the next entry
             clearInputs();
 
-            // Show success message
-            showAlert("Task added successfully!");
+            // Show success message with animation
+            showSuccessMessage("✨ Task added successfully!");
         } catch (Exception e) {
-            System.out.println("Error adding task: " + e.getMessage());
-            e.printStackTrace();
-            showAlert("Error adding task: " + e.getMessage());
+            showAlert("❌ Error adding task: " + e.getMessage(), "Error");
         }
     }
 
@@ -214,9 +271,9 @@ public class TaskManagerController {
             if (selectedTask != null) {
                 currentEditingTask = selectedTask;
                 populateFields(currentEditingTask);
-                showAlert("Editing mode: modify the fields and click 'Edit Task' again to save changes.");
+                showAlert("Editing mode: modify the fields and click 'Edit Task' again to save changes.", "Edit Mode");
             } else {
-                showAlert("Please select a task to edit");
+                showAlert("Please select a task to edit", "No Task Selected");
             }
         } else {
             // If in editing mode, update the task with the new values.
@@ -226,7 +283,7 @@ public class TaskManagerController {
             }
             taskTable.refresh();
             refreshAgendaAppointments();
-            showAlert("Task updated successfully.");
+            showSuccessMessage("✨ Task updated successfully!");
             currentEditingTask = null;
             clearInputs();
         }
@@ -289,11 +346,13 @@ public class TaskManagerController {
     private void markTaskComplete() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
-            selectedTask.setStatus("Completed");
+            selectedTask.setStatus(Task.STATUS_COMPLETED);
+            selectedTask.setCompletionPercentage(100);
             taskTable.refresh();
             refreshAgendaAppointments();
+            showSuccessMessage("🎉 Task marked as complete!");
         } else {
-            showAlert("Please select a task to mark as complete");
+            showAlert("⚠️ Please select a task to mark as complete", "No Task Selected");
         }
     }
 
@@ -305,13 +364,21 @@ public class TaskManagerController {
     private void deleteTask() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
-            tasks.remove(selectedTask);
-            if (dbManager != null) {
-                dbManager.deleteTask(selectedTask.getTaskID());
+            Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmDialog.setTitle("Delete Task");
+            confirmDialog.setHeaderText("Are you sure?");
+            confirmDialog.setContentText("This action cannot be undone.");
+            
+            if (confirmDialog.showAndWait().get() == ButtonType.OK) {
+                tasks.remove(selectedTask);
+                if (dbManager != null) {
+                    dbManager.deleteTask(selectedTask.getTaskID());
+                }
+                refreshAgendaAppointments();
+                showSuccessMessage("🗑️ Task deleted successfully!");
             }
-            refreshAgendaAppointments();
         } else {
-            showAlert("Please select a task to delete");
+            showAlert("⚠️ Please select a task to delete", "No Task Selected");
         }
     }
 
@@ -333,9 +400,21 @@ public class TaskManagerController {
      * Helper method to display an information alert with the provided message.
      * @param message the message to display in the alert
      */
-    private void showAlert(String message) {
+    private void showAlert(String message, String title) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    /**
+     * Helper method to display a success message with the provided message.
+     * @param message the message to display in the success alert
+     */
+    private void showSuccessMessage(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Information");
+        alert.setTitle("Success");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
@@ -368,15 +447,15 @@ public class TaskManagerController {
             if (dbManager != null) {
                 try {
                     dbManager.addTask(task);
+                    showSuccessMessage("📥 Task imported successfully!");
                 } catch (Exception e) {
-                    System.out.println("Error saving task to database: " + e.getMessage());
-                    showAlert("Error saving task to database.");
+                    showAlert("❌ Error saving task to database: " + e.getMessage(), "Import Error");
                 }
             }
             taskTable.refresh();
             refreshAgendaAppointments();
         } else {
-            System.out.println("Attempted to add a null task.");
+            showAlert("⚠️ Attempted to add a null task", "Import Error");
         }
     }
 
