@@ -39,7 +39,7 @@ public class TaskManagerController {
     @FXML private TableColumn<Task, LocalTime> timeColumn; // Column to display task time
     @FXML private TableColumn<Task, String> priorityColumn;
     @FXML private TableColumn<Task, String> statusColumn;
-    @FXML private MenuItem createNewAccount, loginToExisting;
+    @FXML private MenuItem createNewAccount, loginToExisting, checkOverdueTasksMenuItem;
 
 
     // Container for the Agenda control (set in FXML)
@@ -400,4 +400,44 @@ public class TaskManagerController {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Checks if the tasks are overdue or not
+     */
+    @FXML
+private void overDueTaskChecker() {
+        // Checks if there are any tasks in the list
+        if(tasks.isEmpty()) {
+            showAlert("No tasks are available to check");
+            return;
+        }
+
+        // Reiterating through tasks and checks for tasks that are overdue
+        StringBuilder tasksOverdue = new StringBuilder();
+        StringBuilder tasksNotOverdue = new StringBuilder();
+
+        for(Task t : tasks) {
+            if(t.isOverdue()) {
+                tasksOverdue.append("Task: ").append(t.getDescription())
+                        .append("\nDue Date: ").append(t.getDueDate())
+                        .append("\nDue Time: ").append(t.getDueTime())
+                        .append("\n\n");
+            } else {
+                tasksNotOverdue.append("Task: ").append(t.getDescription())
+                        .append("\nDue Date: ").append(t.getDueDate())
+                        .append("\nDue Time: ").append(t.getDueTime())
+                        .append("\n\n");
+            }
+        }
+
+        // Show popup based on the results
+        if(tasksOverdue.length() > 0) {
+            showAlert("Overdue Tasks:\n\n" + tasksOverdue.toString());
+        } else {
+            showAlert("No overdue tasks are found.");
+        }
+    if(tasksNotOverdue.length() > 0) {
+        showAlert("No Overdue Tasks:\n\n" + tasksNotOverdue.toString());
+    }
+}
 }

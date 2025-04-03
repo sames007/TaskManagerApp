@@ -40,7 +40,11 @@
                  <MenuItem mnemonicParsing="false" text="About" />
                </items>
              </Menu>
-           </menus>
+               <Menu mnemonicParsing="false" text="Tools">
+                   <items>
+                       <MenuItem fx:id="checkOverdueTasksMenuItem" mnemonicParsing="false" onAction="#overDueTaskChecker" text=" Overdue Tasks Checker" />
+                   </items>
+               </Menu>           </menus>
             <opaqueInsets>
                <Insets />
             </opaqueInsets>
