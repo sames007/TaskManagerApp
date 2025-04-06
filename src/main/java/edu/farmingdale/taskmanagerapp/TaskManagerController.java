@@ -400,4 +400,17 @@ public class TaskManagerController {
             e.printStackTrace();
         }
     }
+    @FXML
+    private void displaySignUp(){
+        try {
+            FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
+            Parent signUpRoot = signUpLoader.load();
+            Stage signUpStage = new Stage();
+            Scene signUpScene = new Scene(signUpRoot);
+            signUpStage.setScene(signUpScene);
+            signUpStage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

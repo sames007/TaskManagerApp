@@ -33,7 +33,7 @@ public class LoginController {
             String password = passwordTextField.getText();
 
 
-            UserSession user = new UserSession(0, "", email, password);
+            UserSession user = new UserSession("", email, password);
             UserSession s = dm.getAccount(user.getEmail());
             if (s.getUserName().isEmpty() || !s.getPassword().equals(password)) {
                 System.out.println("Login failed, please enter a valid email/password");

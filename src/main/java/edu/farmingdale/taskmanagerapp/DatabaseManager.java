@@ -49,12 +49,11 @@ public class DatabaseManager {
         try {
             conn = DriverManager.getConnection(DB_URL, USER, PASS);
             Statement statement = conn.createStatement();
-            String sql = "INSERT INTO users (UserID, UserName, PassWord, Email) VALUES (?, ?, ?, ?)";
+            String sql = "INSERT INTO users (UserName, PassWord, Email) VALUES (?, ?, ?)";
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.setInt(1, s.getUserID());
-            preparedStatement.setString(2, s.getUserName());
-            preparedStatement.setString(3, s.getPassword());
-            preparedStatement.setString(4, s.getEmail());
+            preparedStatement.setString(1, s.getUserName());
+            preparedStatement.setString(2, s.getPassword());
+            preparedStatement.setString(3, s.getEmail());
 
             int row = preparedStatement.executeUpdate();
             statement.close();
@@ -65,16 +64,15 @@ public class DatabaseManager {
         }
     }
 
-    public UserSession getAccount(String email) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE email = ?")) {
-            stmt.setString(1, email);
+    public UserSession getAccount(String username) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
+            stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    UserSession s = new UserSession(rs.getInt("UserID"), rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"));
+                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"));
                     return s;
                 } else {
-                    UserSession s = new UserSession(0, "", "", "");
-                    return s;
+                    return null;
                 }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
@@ -82,6 +80,7 @@ public class DatabaseManager {
         }catch (SQLException e){
             throw new RuntimeException(e);
         }
+
     }
     public void addTask(Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Tasks (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
