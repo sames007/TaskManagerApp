@@ -7,12 +7,6 @@ public class UserSession {
     private String email;
     private String password;
 
-    public UserSession(int UserID, String userName, String email, String password){
-        this.userID = userID;
-        this.userName = userName;
-        this.email = email;
-        this.password = password;
-    }
     public UserSession(String userName, String email, String password){
         this.userID = userID;
         this.userName = userName;

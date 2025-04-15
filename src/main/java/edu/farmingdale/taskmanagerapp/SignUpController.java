@@ -16,29 +16,31 @@ public class SignUpController {
     private TextField usernameField, emailField, passwordField;
     @FXML
     Button createButton;
+    private DatabaseManager dm;
 
     public void initialize() {
 
     }
+    @FXML
     public void createNewAccount(ActionEvent actionEvent) {
-//        dm = new DatabaseManager();
-//        String priv = "NONE";
-//        String username = usernameField.getText();
-//        String password = passwordField.getText();
-//        UserSession s = new UserSession(usernameField.getText(), emailField.getText(), passwordField.getText(),priv);
-//
-//        try{
-//            UserSession existingUser = dm.getAccount(s.getUserName());
-//            if(existingUser==null) {
-//                dm.registerUser(s);
-//                System.out.println("Account created!");
-//            }else{
-//                System.out.println("Username is taken! Please choose another");
-//            }
-//        } catch (Exception e) {
-//            System.out.println("Unable to create account");
-//            e.printStackTrace();
-//        }
+        dm = new DatabaseManager();
+        String priv = "NONE";
+        String username = usernameField.getText();
+        String password = passwordField.getText();
+        UserSession s = new UserSession(usernameField.getText(), emailField.getText(), passwordField.getText());
+
+        try{
+            UserSession existingUser = dm.getAccount(s.getUserName());
+            if(existingUser==null) {
+                dm.registerUser(s);
+                System.out.println("Account created!");
+            }else{
+                System.out.println("Username is taken! Please choose another");
+            }
+        } catch (Exception e) {
+            System.out.println("Unable to create account");
+            e.printStackTrace();
+        }
 
     }
 }
