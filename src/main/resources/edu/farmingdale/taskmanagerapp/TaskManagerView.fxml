@@ -43,6 +43,7 @@
                <Menu mnemonicParsing="false" text="Tools">
                    <items>
                        <MenuItem fx:id="checkOverdueTasksMenuItem" mnemonicParsing="false" onAction="#overDueTaskChecker" text=" Overdue Tasks Checker" />
+                       <MenuItem fx:id="notificationsMenuItem" onAction="#notificationHistory" text="Notifications (0)" />
                    </items>
                </Menu>           </menus>
             <opaqueInsets>
