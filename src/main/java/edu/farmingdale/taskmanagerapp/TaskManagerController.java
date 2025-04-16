@@ -1,16 +1,26 @@
 package edu.farmingdale.taskmanagerapp;
 
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
 import jfxtras.scene.control.agenda.Agenda;
 import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
 
@@ -18,6 +28,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
 
 /**
  * Controller for managing tasks. It handles adding, editing,
@@ -39,7 +50,7 @@ public class TaskManagerController {
     @FXML private TableColumn<Task, LocalTime> timeColumn; // Column to display task time
     @FXML private TableColumn<Task, String> priorityColumn;
     @FXML private TableColumn<Task, String> statusColumn;
-    @FXML private MenuItem createNewAccount, loginToExisting;
+    @FXML private MenuItem createNewAccount, loginToExisting, checkOverdueTasksMenuItem;
 
 
     // Container for the Agenda control (set in FXML)
@@ -114,9 +125,17 @@ public class TaskManagerController {
 
         // Add the agenda control to the calendar container in the UI
         agendaContainer.getChildren().add(agenda);
-
+        agendaContainer.sceneProperty().addListener((obs,oldVal, newVal) -> {
+            if(newVal != null) refreshAgendaAppointments();
+        });
         // Initialize the agenda appointments based on current tasks
         refreshAgendaAppointments();
+
+        //Adds a listener to the list of notifications that updates the current number of notifications
+        notifications.addListener((ListChangeListener.Change<? extends String> change) -> {
+            int notifCount = notifications.size();
+            notificationsMenuItem.setText("Notifications (" + notifCount + ")");
+        });
     }
 
     /**
@@ -178,6 +197,10 @@ public class TaskManagerController {
         tasks.add(task);
         System.out.println("Tasks List: " + tasks);
 
+        //notifications for adding task
+        notifications.add("New task added: " + description);
+        showNotification("New task added: " + description);
+
         try {
             dbManager.addTask(task);
         } catch (Exception e) {
@@ -205,6 +228,11 @@ public class TaskManagerController {
                 currentEditingTask = selectedTask;
                 populateFields(currentEditingTask);
                 showAlert("Editing mode: modify the fields and click 'Edit Task' again to save changes.");
+
+                //notifications for editing task
+                notifications.add("Task editing: " + selectedTask.getDescription());
+                showNotification("Task editing: " + selectedTask.getDescription());
+
             } else {
                 showAlert("Please select a task to edit");
             }
@@ -282,6 +310,11 @@ public class TaskManagerController {
             selectedTask.setStatus("Completed");
             taskTable.refresh();
             refreshAgendaAppointments();
+
+            //notifications for completing task
+            notifications.add("Task completed: " + selectedTask.getDescription());
+            showNotification("Task completed: " + selectedTask.getDescription());
+
         } else {
             showAlert("Please select a task to mark as complete");
         }
@@ -300,6 +333,11 @@ public class TaskManagerController {
                 dbManager.deleteTask(selectedTask.getTaskID());
             }
             refreshAgendaAppointments();
+
+            //notifications for deleting task
+            notifications.add("Task deleted: " + selectedTask.getDescription());
+            showNotification("Task deleted: " + selectedTask.getDescription());
+
         } else {
             showAlert("Please select a task to delete");
         }
@@ -413,4 +451,118 @@ public class TaskManagerController {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Checks if the tasks are overdue or not
+     */
+    @FXML
+private void overDueTaskChecker() {
+        // Checks if there are any tasks in the list
+        if(tasks.isEmpty()) {
+            showAlert("No tasks are available to check");
+            return;
+        }
+
+        // Reiterating through tasks and checks for tasks that are overdue
+        StringBuilder tasksOverdue = new StringBuilder();
+        StringBuilder tasksNotOverdue = new StringBuilder();
+
+        for(Task t : tasks) {
+            if(t.isOverdue()) {
+                tasksOverdue.append("Task: ").append(t.getDescription())
+                        .append("\nDue Date: ").append(t.getDueDate())
+                        .append("\nDue Time: ").append(t.getDueTime())
+                        .append("\n\n");
+            } else {
+                tasksNotOverdue.append("Task: ").append(t.getDescription())
+                        .append("\nDue Date: ").append(t.getDueDate())
+                        .append("\nDue Time: ").append(t.getDueTime())
+                        .append("\n\n");
+            }
+        }
+
+        // Show popup based on the results
+        if(tasksOverdue.length() > 0) {
+            showAlert("Overdue Tasks:\n\n" + tasksOverdue.toString());
+        } else {
+            showAlert("No overdue tasks are found.");
+        }
+    if(tasksNotOverdue.length() > 0) {
+        showAlert("No Overdue Tasks:\n\n" + tasksNotOverdue.toString());
+    }
 }
+
+    @FXML
+    // Add notification fields
+    private MenuItem notificationsMenuItem;
+    private ObservableList<String> notifications = FXCollections.observableArrayList();
+    private Stage notificationStage;
+
+    //Notification display method
+    private void showNotification(String msg) {
+        Platform.runLater(() -> {
+            Label labelNotification = new Label(msg);
+            labelNotification.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 10px; -fx-border-radius: 5px; -fx-background-radius: 5px;");
+
+            StackPane popups = new StackPane(labelNotification);
+            popups.setStyle("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);");
+
+            Scene sc = new Scene(popups);
+            sc.setFill(Color.TRANSPARENT);
+
+            notificationStage = new Stage();
+            notificationStage.initOwner(taskTable.getScene().getWindow());
+            notificationStage.initStyle(StageStyle.TRANSPARENT);
+            notificationStage.setScene(sc);
+
+            Stage primaryStage = (Stage) taskTable.getScene().getWindow();
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+
+            double x = primaryStage.isFullScreen() ? screenBounds.getMaxX() : primaryStage.getX() + primaryStage.getWidth();
+            double y = primaryStage.isFullScreen() ? screenBounds.getMinY() : primaryStage.getY();
+
+            //Putting notifications in top-right
+            notificationStage.setX(x - 200);
+            notificationStage.setY(y + 20);
+            notificationStage.show();
+
+            //Auto-close after 5 seconds
+            PauseTransition delay = new PauseTransition(Duration.seconds(3));
+            delay.setOnFinished(e -> notificationStage.close());
+            delay.play();
+        });
+    }
+
+    @FXML
+    private void notificationHistory(){
+        ListView<String> lv = new ListView<>(notifications);
+        lv.setPrefSize(300,200);
+
+        // Create a Clear All button
+        Button clearNotifications = new Button("Clear All");
+        clearNotifications.setOnAction(e -> {
+            // Execute the clearing on the JavaFX thread
+            Platform.runLater(() -> {
+                notifications.clear();
+                lv.setItems(FXCollections.observableArrayList());
+            });
+        });
+
+        // Create a VBox to hold the ListView and Clear All button
+        VBox vbox = new VBox(10, lv, clearNotifications);
+        vbox.setPadding(new Insets(10));
+
+        // Create and display the scene
+        Scene sc = new Scene(vbox, 300, 200);
+        Stage notifHistoryStage = new Stage();
+        notifHistoryStage.setTitle("Notification History");
+        notifHistoryStage.setScene(sc);
+
+        // Set close request handler
+        notifHistoryStage.setOnCloseRequest(e -> {
+            System.out.println("Notification history window is closing.");
+        });
+        notifHistoryStage.show();
+    }
+}
+

@@ -74,4 +74,21 @@ public class Task {
     public void setReminder(LocalDate reminder) {
         this.reminder = reminder;
     }
+
+    /**
+     * Checks if task is overdue.
+     * @return true if the date and time are past the
+     * due date and time, otherwise false
+      */
+    public boolean isOverdue(){
+    LocalDate today = LocalDate.now();
+    LocalTime now = LocalTime.now();
+
+    if (dueDate.isBefore(today)) {
+        return true; // Past due date
+    } else if (dueDate.isEqual(today) && dueTime.isBefore(now)){
+        return true; // Due today but time's already passed
+    }
+    return false; // Not overdue
+    }
 }
