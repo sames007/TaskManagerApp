@@ -1,103 +1,85 @@
 package edu.farmingdale.taskmanagerapp;
 
-import javafx.animation.PauseTransition;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
-import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.stage.Screen;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
-import javafx.util.Duration;
 import jfxtras.scene.control.agenda.Agenda;
 import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-
+import java.util.Objects;
+import javafx.application.Platform;
 
 /**
  * Controller for managing tasks. It handles adding, editing,
  * marking tasks complete, and deleting tasks.
  */
 public class TaskManagerController {
-    // UI controls from the FXML file
-    @FXML private TextField taskInput;
-    @FXML private DatePicker dueDatePicker;
-    @FXML private Spinner<Integer> hourSpinner;       // Spinner for hour (1-12)
-    @FXML private Spinner<Integer> minuteSpinner;       // Spinner for minute (0-59)
-    @FXML private ComboBox<String> amPmComboBox;          // ComboBox for AM/PM selection
-    @FXML private ComboBox<String> priorityComboBox;
-    @FXML private ComboBox<String> categoryComboBox;
-    @FXML private DatePicker reminderDatePicker;
-    @FXML private TableView<Task> taskTable;
-    @FXML private TableColumn<Task, String> taskColumn;
-    @FXML private TableColumn<Task, LocalDate> dueDateColumn;
-    @FXML private TableColumn<Task, LocalTime> timeColumn; // Column to display task time
-    @FXML private TableColumn<Task, String> priorityColumn;
-    @FXML private TableColumn<Task, String> statusColumn;
-    @FXML private MenuItem createNewAccount, loginToExisting, checkOverdueTasksMenuItem;
 
+    @FXML
+    private Button notificationBtn;
+    @FXML
+    private TableView<Task> taskTable;
+    @FXML
+    private TableColumn<Task, String> taskColumn;
+    @FXML
+    private TableColumn<Task, LocalDate> dueDateColumn;
+    @FXML
+    private TableColumn<Task, LocalTime> timeColumn;
+    @FXML
+    private TableColumn<Task, String> priorityColumn;
+    @FXML
+    private TableColumn<Task, String> statusColumn;
+    @FXML
+    private VBox agendaVbox; // Renamed from agendaContainer
+    @FXML
+    private Label agendaLabel;
+    @FXML
+    private ListView<String> agendaList;
+    @FXML
+    private DatePicker calendarView; // Renamed from calenderView
+    @FXML
+    private VBox previewPane;
+    @FXML
+    private Button addTaskButton;
+    @FXML
+    private Button markCompleteBtn;
+    @FXML
+    private Button deleteBtn;
+    @FXML
+    private Label welcomeLabel;
 
-    // Container for the Agenda control (set in FXML)
-    @FXML private VBox agendaContainer;
-
-    // Rename JFXtras Agenda control to "agenda"
-    private Agenda agenda;
-
-    // Observable list to hold tasks for the TableView
+    private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
-
     private DatabaseManager dbManager;
-
-    // Field to hold the task that is currently being edited (if any)
-    private Task currentEditingTask = null;
 
     /**
      * Setter for DatabaseManager instance.
+     *
      * @param dbManager the DatabaseManager to use for DB operations.
      */
     public void setDatabaseManager(DatabaseManager dbManager) {
         this.dbManager = dbManager;
+        loadTasksFromDb();
     }
 
+    public TaskManagerController() {}
     /**
      * Initializes the controller after the FXML file is loaded.
      * Sets up the ComboBoxes, TableView columns, Spinners, and agenda.
      */
     @FXML
     public void initialize() {
-        // Set up options for priority and category ComboBoxes
-        priorityComboBox.setItems(FXCollections.observableArrayList("High", "Medium", "Low"));
-        categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal"));
-
-        // Set up hour spinner (1-12) and make it editable
-        SpinnerValueFactory<Integer> hourFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12, 12);
-        hourSpinner.setValueFactory(hourFactory);
-        hourSpinner.setEditable(true);
-
-        // Set up minute spinner (0-59) and make it editable
-        SpinnerValueFactory<Integer> minuteFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, 0);
-        minuteSpinner.setValueFactory(minuteFactory);
-        minuteSpinner.setEditable(true);
-
-        // Set up AM/PM ComboBox with default value "AM"
-        amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
-        amPmComboBox.setValue("AM");
 
         // Set up the TableView columns with property mappings
         taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
@@ -109,33 +91,63 @@ public class TaskManagerController {
         // Bind the observable list of tasks to the TableView
         taskTable.setItems(tasks);
 
-        // Load tasks from the database if available
-        if (dbManager != null) {
-            dbManager.loadTasks(tasks);
-            taskTable.refresh();
-        }
-
         // --- Create and add the Agenda control programmatically, now named "agenda" ---
         agenda = new Agenda();
-        agenda.setPrefHeight(500);
-        agenda.setPrefWidth(380);
-        // Set additional properties on the agenda control
         agenda.setAllowDragging(true);
         agenda.setAllowResize(true);
 
         // Add the agenda control to the calendar container in the UI
-        agendaContainer.getChildren().add(agenda);
-        agendaContainer.sceneProperty().addListener((obs,oldVal, newVal) -> {
-            if(newVal != null) refreshAgendaAppointments();
-        });
-        // Initialize the agenda appointments based on current tasks
-        refreshAgendaAppointments();
+        if (agendaVbox != null) {
+            agendaVbox.getChildren().add(agenda);
+        } else {
+            System.err.println("'agendaContainer' is EMPTY");
+        }
 
-        //Adds a listener to the list of notifications that updates the current number of notifications
-        notifications.addListener((ListChangeListener.Change<? extends String> change) -> {
-            int notifCount = notifications.size();
-            notificationsMenuItem.setText("Notifications (" + notifCount + ")");
-        });
+        if (addTaskButton != null) {
+            addTaskButton.setOnAction(event -> showTaskDialog(null));
+        } else {
+            System.err.println("'addTaskButton' is EMPTY");
+        }
+
+        if (notificationBtn != null) {
+            notificationBtn.setOnAction(event -> System.out.println("Notification Button Clicked"));
+        }
+
+        if (calendarView != null) {
+            calendarView.setOnAction(event -> {
+                LocalDate selectedDate = calendarView.getValue();
+                System.out.println("Date Selected In Calender: " + selectedDate);
+                if (selectedDate != null && agenda != null) {
+                    agenda.setDisplayedLocalDateTime(selectedDate.atStartOfDay());
+                }
+            });
+        }
+
+        if (markCompleteBtn != null) {
+            markCompleteBtn.setOnAction(event -> markTaskComplete());
+        } else {
+            System.err.println("'markCompleteBtn' is EMPTY");
+        }
+
+        if (deleteBtn != null) {
+            deleteBtn.setOnAction(event -> deleteTask());
+        } else {
+            System.err.println("'deleteBtn' is EMPTY");
+        }
+
+        Platform.runLater(this::refreshAgendaAppointments);
+    }
+
+    private void loadTasksFromDb() {
+        if (dbManager != null) {
+            tasks.clear();
+            dbManager.loadTasks(tasks);
+            taskTable.refresh();
+            Platform.runLater(this::refreshAgendaAppointments);
+        } else {
+            System.err.println("Database Manager EMPTY - Cannot Load Tasks");
+            showAlert("COULD NOT CONNECT TO DATABASE TO LOAD TASKS");
+        }
     }
 
     /**
@@ -143,160 +155,70 @@ public class TaskManagerController {
      */
     private void refreshAgendaAppointments() {
         // Clear any existing appointments
+        if (agenda == null) {
+            System.err.println("Agenda Control Null - Cannot Refresh");
+            return;
+        }
+
         agenda.appointments().clear();
         // Create an appointment for each task
         for (Task task : tasks) {
-            LocalDateTime start = LocalDateTime.of(task.getDueDate(), task.getDueTime());
-            LocalDateTime end = start.plusHours(1);
-            AppointmentImplLocal appointment = new AppointmentImplLocal()
-                    .withStartLocalDateTime(start)
-                    .withEndLocalDateTime(end)
-                    .withSummary(task.getDescription())
-                    .withDescription("Priority: " + task.getPriority());
-            agenda.appointments().add(appointment);
-        }
-    }
+            if (!"Completed".equalsIgnoreCase(task.getStatus())) {
+                try {
+                    if (task.getDueDate() == null || task.getDueTime() == null) {
+                        LocalDateTime start = LocalDateTime.of(task.getDueDate(), task.getDueTime());
+                        LocalDateTime end = start.plusHours(1);
+                        AppointmentImplLocal appointment = new AppointmentImplLocal()
+                                .withStartLocalDateTime(start)
+                                .withEndLocalDateTime(end)
+                                .withSummary(task.getDescription())
+                                .withDescription("Priority: " + task.getPriority());
+                        agenda.appointments().add(appointment);
+                    } else {
+                        System.err.println("Skipped Appointment For Task With NULL Data/Time");
+                    }
+                } catch (NullPointerException e) {
+                    System.err.println("Skipped Appointment For Task With EMPTY Data/Time: " + task.getDescription());
+                }
+            }
 
-    /**
-     * Called when the user clicks the "Add Task" button or presses Enter.
-     * Validates input fields, converts time, and adds a new task.
-     */
-    @FXML
-    private void addTask() {
-        // Get and trim the input values
-        String description = taskInput.getText().trim();
-        LocalDate dueDate = dueDatePicker.getValue();
-        Integer hour = hourSpinner.getValue();
-        Integer minute = minuteSpinner.getValue();
-        String amPm = amPmComboBox.getValue();
-        String priority = priorityComboBox.getValue();
-        String category = categoryComboBox.getValue();
-        LocalDate reminder = reminderDatePicker.getValue();
-
-        // Check if any required field is missing
-        if (description.isEmpty() || dueDate == null || hour == null || minute == null
-                || amPm == null || priority == null || category == null) {
-            showAlert("Please fill in all required fields (Task, Due Date, Time, Priority, Category)");
-            return;
-        }
-        // Ensure the due date is in the future
-        if (!dueDate.isAfter(LocalDate.now())) {
-            showAlert("Due date must be in the future.");
-            return;
-        }
-
-        // Convert 12-hour time to 24-hour format using helper method
-        LocalTime dueTime = convertToLocalTime(hour, minute, amPm);
-
-        // Create a new Task with the provided information
-        Task task = new Task(description, dueDate, dueTime, priority);
-        task.setCategory(category);
-        task.setReminder(reminder);
-
-        // Add task to the observable list and database
-        tasks.add(task);
-        System.out.println("Tasks List: " + tasks);
-
-        //notifications for adding task
-        notifications.add("New task added: " + description);
-        showNotification("New task added: " + description);
-
-        try {
-            dbManager.addTask(task);
-        } catch (Exception e) {
-            System.out.println("Error saving task to database: " + e.getMessage());
-            showAlert("Error saving task to database.");
-        }
-
-        // Refresh the agenda to include the new task
-        refreshAgendaAppointments();
-
-        // Clear the input fields for the next entry
-        clearInputs();
-    }
-
-    /**
-     * Handles the editing of a task. Uses an editing mode so that the user first selects
-     * a task to edit and then confirms the changes by clicking the same "Edit Task" button.
-     */
-    @FXML
-    private void editTask() {
-        // If not in editing mode, load the selected task into the input fields.
-        if (currentEditingTask == null) {
-            Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
-            if (selectedTask != null) {
-                currentEditingTask = selectedTask;
-                populateFields(currentEditingTask);
-                showAlert("Editing mode: modify the fields and click 'Edit Task' again to save changes.");
-
-                //notifications for editing task
-                notifications.add("Task editing: " + selectedTask.getDescription());
-                showNotification("Task editing: " + selectedTask.getDescription());
-
+            if (agenda.getSkin() != null) {
+                agenda.refresh();
             } else {
-                showAlert("Please select a task to edit");
+                System.err.println("Agenda Skin STILL NULL - Cannot Refresh");
             }
-        } else {
-            // If in editing mode, update the task with the new values.
-            updateTask(currentEditingTask);
-            if (dbManager != null) {
-                dbManager.updateTask(currentEditingTask);
-            }
-            taskTable.refresh();
-            refreshAgendaAppointments();
-            showAlert("Task updated successfully.");
-            currentEditingTask = null;
-            clearInputs();
         }
     }
 
-    /**
-     * Helper method to populate the input fields with the task data.
-     * @param task the task whose data is to be loaded
-     */
-    private void populateFields(Task task) {
-        taskInput.setText(task.getDescription());
-        dueDatePicker.setValue(task.getDueDate());
+    private Agenda.AppointmentGroup getAppointmentGroupForPriority(String priority) {
 
-        // Convert stored 24-hour time to 12-hour format
-        LocalTime time = task.getDueTime();
-        int hour24 = time.getHour();
-        int displayHour = (hour24 == 0 || hour24 == 12) ? 12 : hour24 % 12;
-        String amPm = (hour24 < 12) ? "AM" : "PM";
+        Agenda.AppointmentGroup highPriorityGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-high");
+        Agenda.AppointmentGroup mediumPriorityGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-medium");
+        Agenda.AppointmentGroup lowPriorityGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-low");
+        Agenda.AppointmentGroup defaultGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-default");
 
-        hourSpinner.getValueFactory().setValue(displayHour);
-        minuteSpinner.getValueFactory().setValue(time.getMinute());
-        amPmComboBox.setValue(amPm);
+        if (priority == null) return defaultGroup;
 
-        priorityComboBox.setValue(task.getPriority());
-        categoryComboBox.setValue(task.getCategory());
-        reminderDatePicker.setValue(task.getReminder());
+        return switch (priority.toLowerCase()) {
+            case "extreme", "high" -> highPriorityGroup;
+            case "medium" -> mediumPriorityGroup;
+            case "low" -> lowPriorityGroup;
+            default -> defaultGroup;
+        };
     }
 
     /**
-     * Helper method to update a task with data from the input fields.
-     * @param task the task to update
+     * Called when the user intends to edit a task (e.g., double-clicking the row or clicking an Edit button).
+     * Opens the Add/Edit Task dialog in "edit" mode.
      */
-    private void updateTask(Task task) {
-        String updatedDescription = taskInput.getText().trim();
-        LocalDate updatedDueDate = dueDatePicker.getValue();
-        Integer updatedHour = hourSpinner.getValue();
-        Integer updatedMinute = minuteSpinner.getValue();
-        String updatedAmPm = amPmComboBox.getValue();
-        String updatedPriority = priorityComboBox.getValue();
-        String updatedCategory = categoryComboBox.getValue();
-        LocalDate updatedReminder = reminderDatePicker.getValue();
-
-        // Convert 12-hour time to 24-hour format using helper method
-        LocalTime updatedDueTime = convertToLocalTime(updatedHour, updatedMinute, updatedAmPm);
-
-        // Update the task properties
-        task.setDescription(updatedDescription);
-        task.setDueDate(updatedDueDate);
-        task.setDueTime(updatedDueTime);
-        task.setPriority(updatedPriority);
-        task.setCategory(updatedCategory);
-        task.setReminder(updatedReminder);
+    @FXML
+    private void handleEditTask() {
+        Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
+        if (selectedTask != null) {
+            showTaskDialog(selectedTask);
+        } else {
+            showAlert("Please select a task to edit.");
+        }
     }
 
     /**
@@ -307,16 +229,23 @@ public class TaskManagerController {
     private void markTaskComplete() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
-            selectedTask.setStatus("Completed");
-            taskTable.refresh();
-            refreshAgendaAppointments();
-
-            //notifications for completing task
-            notifications.add("Task completed: " + selectedTask.getDescription());
-            showNotification("Task completed: " + selectedTask.getDescription());
-
+            if (!"Completed".equalsIgnoreCase(selectedTask.getStatus())) {
+                selectedTask.setStatus("Completed");
+                if (dbManager != null) {
+                    dbManager.updateTask(selectedTask);
+                    taskTable.refresh();
+                    refreshAgendaAppointments();
+                } else {
+                    System.err.println("Database Manager EMPTY - Added to UI But NOT SAVED In Database");
+                    showAlert("Task Added To List But NOT SAVED to Database");
+                }
+                taskTable.refresh(); // Refresh table to show status change
+                refreshAgendaAppointments(); // Remove completed task from agenda
+            } else {
+                showAlert("Task Already Marked Complete");
+            }
         } else {
-            showAlert("Please select a task to mark as complete");
+            showAlert("Please Select A Task");
         }
     }
 
@@ -328,40 +257,48 @@ public class TaskManagerController {
     private void deleteTask() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
         if (selectedTask != null) {
-            tasks.remove(selectedTask);
-            if (dbManager != null) {
-                dbManager.deleteTask(selectedTask.getTaskID());
-            }
-            refreshAgendaAppointments();
+            // Confirmation dialog
+            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmation.setTitle("Confirm Deletion");
+            confirmation.setHeaderText("Delete Task: " + selectedTask.getDescription());
+            confirmation.setContentText("Are you sure you want to permanently delete this task?");
 
-            //notifications for deleting task
-            notifications.add("Task deleted: " + selectedTask.getDescription());
-            showNotification("Task deleted: " + selectedTask.getDescription());
+            confirmation.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    boolean deletedFromDb = false;
+                    if (dbManager != null) {
+                        try {
+                            dbManager.deleteTask(selectedTask.getTaskID());
+                            deletedFromDb = true;
+                            System.out.println("Task '" + selectedTask.getDescription() + "' deleted from DB.");
+                        } catch (Exception e) {
+                            System.err.println("Error deleting task from Database: " + e.getMessage());
+                            showAlert("Error deleting task from database. Please try again.");
+                        }
+                    } else {
+                        System.err.println("Database Manager is NULL - Cannot delete task from Database");
+                        showAlert("Could not connect to the database to delete the task.");
+                    }
 
+                    if (deletedFromDb || dbManager == null) {
+                        tasks.remove(selectedTask);
+                        taskTable.refresh();
+                        refreshAgendaAppointments();
+                        System.out.println("Task '" + selectedTask.getDescription() + "' removed from UI.");
+                    }
+                }
+            });
         } else {
-            showAlert("Please select a task to delete");
+            showAlert("Please select a task to delete.");
         }
     }
 
     /**
-     * Clears all input fields and resets them to default values.
-     */
-    private void clearInputs() {
-        taskInput.clear();
-        dueDatePicker.setValue(null);
-        hourSpinner.getValueFactory().setValue(12);
-        minuteSpinner.getValueFactory().setValue(0);
-        amPmComboBox.setValue("AM");
-        priorityComboBox.setValue(null);
-        categoryComboBox.setValue(null);
-        reminderDatePicker.setValue(null);
-    }
-
-    /**
      * Helper method to display an information alert with the provided message.
+     *
      * @param message the message to display in the alert
      */
-    private void showAlert(String message) {
+    public void showAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Information");
         alert.setHeaderText(null);
@@ -371,40 +308,232 @@ public class TaskManagerController {
 
     /**
      * Helper method to convert 12-hour time (with AM/PM) into 24-hour format.
-     * @param hour the hour value (1-12)
+     *
+     * @param hour   the hour value (1-12)
      * @param minute the minute value (0-59)
-     * @param amPm "AM" or "PM"
+     * @param amPm   "AM" or "PM"
      * @return the converted LocalTime
      */
-    private LocalTime convertToLocalTime(int hour, int minute, String amPm) {
-        int convertedHour = hour;
-        if ("PM".equals(amPm) && hour != 12) {
-            convertedHour += 12;
-        } else if ("AM".equals(amPm) && hour == 12) {
-            convertedHour = 0;
+     public LocalTime convertToLocalTime(int hour, int minute, String amPm) {
+        if (hour < 1 || hour > 12 || minute < 0 || minute > 59 || amPm == null) {
+            System.err.println("Invalid time input provided: " + hour + ":" + minute + " " + amPm);
+            return null;
         }
-        return LocalTime.of(convertedHour, minute);
+
+        int convertedHour = hour;
+        if ("PM".equalsIgnoreCase(amPm)) {
+            if (hour != 12) {
+                convertedHour += 12;
+            }
+
+        } else if ("AM".equalsIgnoreCase(amPm)) {
+            if (hour == 12) {
+                convertedHour = 0;
+            }
+        } else {
+            System.err.println("Invalid AM/PM value: " + amPm);
+            return null;
+        }
+
+        try {
+            return LocalTime.of(convertedHour, minute);
+        } catch (Exception e) {
+            System.err.println("Error creating LocalTime: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
-     * Adds an imported task (from a file) to the list and refreshes the table.
-     * @param task the task to add
+     * Opens the Add Task dialog window.
      */
-    public void addImportedTask(Task task) {
+    @FXML
+    private void showTaskDialog(Task taskToEdit) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("AddTaskDialog.fxml"));
+            if (loader.getLocation() == null) {
+                throw new IOException("Cannot find FXML file: AddTaskDialog.fxml");
+            }
+            Parent root = loader.load();
+
+            AddTaskController dialogController = loader.getController();
+            dialogController.setMainController(this);
+            dialogController.setTaskToEdit(taskToEdit);
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(taskToEdit == null ? "Add New Task" : "Edit Task");
+
+            Scene mainScene = addTaskButton.getScene();
+            if (mainScene != null && mainScene.getWindow() != null) {
+                dialogStage.initOwner(mainScene.getWindow());
+            } else {
+                System.err.println("Warning: Could not set owner for dialog stage.");
+            }
+            dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            Scene scene = new Scene(root);
+            try {
+                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("addTaskDialog.css")).toExternalForm());
+            } catch (NullPointerException e) {
+                System.err.println("Warning: Could Not Load One Or More CSS Files For Dialog.");
+            }
+            dialogStage.setScene(scene);
+            dialogStage.setResizable(false);
+
+            dialogStage.showAndWait();
+
+        } catch (IOException e) {
+            System.err.println("Error Loading Add/Edit Task Dialog: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("CANNOT Open Task Dialog - Check Files");
+        } catch (IllegalStateException e) {
+            System.err.println("Error During FXML Loading: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Error Occurred While Initializing");
+        } catch (NullPointerException e) {
+            System.err.println("Null Pointer Exception during dialog setup: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("An internal error occurred opening the dialog.");
+        }
+    }
+
+
+    public void addNewTaskFromDialog(Task newTask) {
+        if (newTask != null) {
+            if (dbManager != null) {
+                try {
+                    dbManager.addTask(newTask); // Save to DB first
+                    tasks.add(newTask); // Add to UI list only after successful DB save
+                    taskTable.refresh();
+                    refreshAgendaAppointments();
+                    System.out.println("Task Added & Saved: " + newTask.getDescription());
+                } catch (Exception e) {
+                    System.err.println("Error Saving New Task From Dialog To Database: " + e.getMessage());
+                    showAlert("Error Saving New Task");
+                }
+            } else {
+                tasks.add(newTask);
+                taskTable.refresh();
+                refreshAgendaAppointments();
+                System.err.println("Database Manager NULL - Task added to UI but NOT SAVED in Database");
+                showAlert("Task Added To List - CANNOT SAVE TO DATABASE - Please Check Connection.");
+            }
+        } else {
+            System.err.println("Attempted To Add A NULL (EMPTY) Task");
+        }
+    }
+
+    public void updateTaskFromDialog(Task updatedTask) {
+        if (updatedTask == null) {
+            System.err.println("updateTaskFromDialog Called With NULL Task");
+            showAlert("Cannot Update Task - No Data To Receive");
+            return;
+        }
+
+        if (dbManager != null) {
+            try {
+                dbManager.updateTask(updatedTask); // Update in DB
+                System.out.println("Task updated in DB: " + updatedTask.getDescription());
+                taskTable.refresh(); // Refresh the table to show changes
+                refreshAgendaAppointments();
+            } catch (Exception e) {
+                System.err.println("Error Updating Task In Database: " + e.getMessage());
+                e.printStackTrace();
+                showAlert("Error Updating Task In Database - Check Connection");
+            }
+        } else {
+            System.err.println("Database Manager is NULL - Task updated in UI but NOT SAVED");
+            showAlert("Task Updated In List But NOT SAVED to Database");
+            taskTable.refresh();
+            refreshAgendaAppointments();
+        }
+    }
+
+    private void showEditTaskDialog() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("AddTaskDialog.fxml"));
+            Parent root = loader.load();
+
+            AddTaskController dialogController = loader.getController();
+            dialogController.setMainController(this);
+
+            Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
+            if (selectedTask != null) {
+                dialogController.setTaskToEdit(selectedTask);
+            } else {
+                showAlert("Please Select A Task To Edit");
+            }
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Editing Task");
+            dialogStage.initOwner(addTaskButton.getScene().getWindow());
+
+            Scene scene = new Scene(root);
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
+
+        } catch (IOException e) {
+            System.err.println("Error Loading Edit Task: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Could Not Open Edit Task Window - Check FXML File");
+        }
+    }
+    /**
+     * Adds a new task received from the dialog, updates DB, and refreshes UI.
+     * This method is called by AddTaskDialogController.
+     *
+     * @param task The new task created in the dialog.
+     */
+    public void addNewTaskFrom(Task task) {
         if (task != null) {
-            tasks.add(task);
+            tasks.add(task); // Add to the observable list
+            System.out.println("Task Added From Dialog: " + task);
+
             if (dbManager != null) {
                 try {
                     dbManager.addTask(task);
                 } catch (Exception e) {
-                    System.out.println("Error saving task to database: " + e.getMessage());
-                    showAlert("Error saving task to database.");
+                    System.err.println("Error Saving Task From Dialog to Database: " + e.getMessage());
+                    showAlert("Error Saving Task To Database.");
+                    tasks.remove(task); // Rollback UI change if DB fails
+                    return;
                 }
+            } else {
+                System.err.println("Database Manager EMPTY - Added to UI But NOT SAVED In Database");
+                showAlert("Task Added To List But NOT SAVED to Database");
             }
-            taskTable.refresh();
+            // Refresh the agenda if needed
             refreshAgendaAppointments();
         } else {
-            System.out.println("Attempted to add a null task.");
+            System.err.println("'addNewTask' Called With EMPTY Task");
+        }
+    }
+    /**
+     * Adds an imported task (from a file) to the list and refreshes the table.
+     *
+     * @param task the task to add
+     */
+    public void addImportedTask(Task task) {
+        if (task != null) {
+            if (dbManager != null) {
+                try {
+                    dbManager.addTask(task);
+                    tasks.add(task);
+                    taskTable.refresh();
+                    refreshAgendaAppointments();
+                } catch (Exception e) {
+                    System.out.println("Error Saving To Database: " + e.getMessage());
+                    showAlert("Error Saving To Database.");
+                    return;
+                }
+            } else {
+                tasks.add(task);
+                taskTable.refresh();
+                refreshAgendaAppointments();
+                System.err.println("Database Manager NULL - Imported Task Added But NOT SAVED to Database");
+                showAlert("Imported Task Added To List But NOT SAVED to Database");
+            }
+        } else {
+            System.out.println("Attempted To Add A NULL (EMPTY) Imported Task.");
         }
     }
 
@@ -414,155 +543,89 @@ public class TaskManagerController {
     @FXML
     private void openChatWindow() {
         try {
-            FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBoxView.fxml"));
+            FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("ChatBoxView.fxml"));
+            if (chatLoader.getLocation() == null) {
+                throw new IOException("Cannot Find FXML file: ChatBoxView.fxml");
+            }
             Parent chatRoot = chatLoader.load();
             Stage chatStage = new Stage();
-            chatStage.setTitle("AI Chat");
+            chatStage.setTitle("AI Chat Assist");
             Scene chatScene = new Scene(chatRoot);
+            chatScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
             chatStage.setScene(chatScene);
             chatStage.show();
         } catch (IOException e) {
-            System.out.println("Error opening chat window: " + e.getMessage());
-        }
-    }
-    @FXML
-    private void displayLogin(){
-        try {
-            FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
-            Parent loginRoot = loginLoader.load();
-            Stage loginStage = new Stage();
-            Scene loginScene = new Scene(loginRoot);
-            loginStage.setScene(loginScene);
-            loginStage.show();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    @FXML
-    private void displaySignUp(){
-        try {
-            FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
-            Parent signUpRoot = signUpLoader.load();
-            Stage signUpStage = new Stage();
-            Scene signUpScene = new Scene(signUpRoot);
-            signUpStage.setScene(signUpScene);
-            signUpStage.show();
-        } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Error Opening Chat Window: " + e.getMessage());
+            showAlert("Cannot Open Chat Window - Check FXML File");
         }
     }
 
-    /**
-     * Checks if the tasks are overdue or not
-     */
     @FXML
-private void overDueTaskChecker() {
-        // Checks if there are any tasks in the list
-        if(tasks.isEmpty()) {
-            showAlert("No tasks are available to check");
+    private void displayLogin() {
+        try {
+            FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
+            if (loginLoader.getLocation() == null) {
+                throw new IOException("Cannot Find FXML file: LoginView.fxml");
+            }
+            Parent loginRoot = loginLoader.load();
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Login");
+            Scene loginScene = new Scene(loginRoot);
+            loginScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+            loginStage.setScene(loginScene);
+            loginStage.showAndWait();
+        } catch (IOException e) {
+            System.err.println("Error Opening Login Window: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Cannot Open Login Window.");
+        }
+    }
+
+    @FXML
+    private void displaySignUp() {
+        try {
+            FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
+            if (signUpLoader.getLocation() == null) {
+                throw new IOException("Cannot Find FXML File: SignUpView.fxml");
+            }
+            Parent signUpRoot = signUpLoader.load();
+            Stage signUpStage = new Stage();
+            signUpStage.setTitle("Sign Up");
+            Scene signUpScene = new Scene(signUpRoot);
+            signUpScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+            signUpStage.setScene(signUpScene);
+            signUpStage.showAndWait();
+        } catch (IOException e) {
+            System.err.println("Error Opening Sign Up Window" + e.getMessage());
+            e.printStackTrace();
+            showAlert("Cannot Open Sign Window");
+        }
+    }
+
+    public void updateTaskFrom(Task taskToEdit) {
+        if (taskToEdit == null) {
+            System.err.println("updateTaskFrom called with a null task.");
+            showAlert("Cannot update task: No task data received.");
             return;
         }
 
-        // Reiterating through tasks and checks for tasks that are overdue
-        StringBuilder tasksOverdue = new StringBuilder();
-        StringBuilder tasksNotOverdue = new StringBuilder();
-
-        for(Task t : tasks) {
-            if(t.isOverdue()) {
-                tasksOverdue.append("Task: ").append(t.getDescription())
-                        .append("\nDue Date: ").append(t.getDueDate())
-                        .append("\nDue Time: ").append(t.getDueTime())
-                        .append("\n\n");
-            } else {
-                tasksNotOverdue.append("Task: ").append(t.getDescription())
-                        .append("\nDue Date: ").append(t.getDueDate())
-                        .append("\nDue Time: ").append(t.getDueTime())
-                        .append("\n\n");
+        if (dbManager != null) {
+            try {
+                dbManager.updateTask(taskToEdit);
+                System.out.println("Task Updated In DB: " + taskToEdit.getDescription());
+            } catch (Exception e) {
+                System.err.println("Error Updating Task In Database: " + e.getMessage());
+                e.printStackTrace();
+                showAlert("Error Updating Task In Database");
             }
-        }
 
-        // Show popup based on the results
-        if(tasksOverdue.length() > 0) {
-            showAlert("Overdue Tasks:\n\n" + tasksOverdue.toString());
         } else {
-            showAlert("No overdue tasks are found.");
+            System.err.println("'dbManager' is EMPTY - Updated in UI but NOT SAVED");
+            showAlert("'dbManager' is EMPTY - Updated in UI but NOT SAVED");
+
         }
-    if(tasksNotOverdue.length() > 0) {
-        showAlert("No Overdue Tasks:\n\n" + tasksNotOverdue.toString());
+
+        taskTable.refresh();
+        refreshAgendaAppointments();
     }
 }
-
-    @FXML
-    // Add notification fields
-    private MenuItem notificationsMenuItem;
-    private ObservableList<String> notifications = FXCollections.observableArrayList();
-    private Stage notificationStage;
-
-    //Notification display method
-    private void showNotification(String msg) {
-        Platform.runLater(() -> {
-            Label labelNotification = new Label(msg);
-            labelNotification.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 10px; -fx-border-radius: 5px; -fx-background-radius: 5px;");
-
-            StackPane popups = new StackPane(labelNotification);
-            popups.setStyle("-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);");
-
-            Scene sc = new Scene(popups);
-            sc.setFill(Color.TRANSPARENT);
-
-            notificationStage = new Stage();
-            notificationStage.initOwner(taskTable.getScene().getWindow());
-            notificationStage.initStyle(StageStyle.TRANSPARENT);
-            notificationStage.setScene(sc);
-
-            Stage primaryStage = (Stage) taskTable.getScene().getWindow();
-            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
-
-            double x = primaryStage.isFullScreen() ? screenBounds.getMaxX() : primaryStage.getX() + primaryStage.getWidth();
-            double y = primaryStage.isFullScreen() ? screenBounds.getMinY() : primaryStage.getY();
-
-            //Putting notifications in top-right
-            notificationStage.setX(x - 200);
-            notificationStage.setY(y + 20);
-            notificationStage.show();
-
-            //Auto-close after 5 seconds
-            PauseTransition delay = new PauseTransition(Duration.seconds(3));
-            delay.setOnFinished(e -> notificationStage.close());
-            delay.play();
-        });
-    }
-
-    @FXML
-    private void notificationHistory(){
-        ListView<String> lv = new ListView<>(notifications);
-        lv.setPrefSize(300,200);
-
-        // Create a Clear All button
-        Button clearNotifications = new Button("Clear All");
-        clearNotifications.setOnAction(e -> {
-            // Execute the clearing on the JavaFX thread
-            Platform.runLater(() -> {
-                notifications.clear();
-                lv.setItems(FXCollections.observableArrayList());
-            });
-        });
-
-        // Create a VBox to hold the ListView and Clear All button
-        VBox vbox = new VBox(10, lv, clearNotifications);
-        vbox.setPadding(new Insets(10));
-
-        // Create and display the scene
-        Scene sc = new Scene(vbox, 300, 200);
-        Stage notifHistoryStage = new Stage();
-        notifHistoryStage.setTitle("Notification History");
-        notifHistoryStage.setScene(sc);
-
-        // Set close request handler
-        notifHistoryStage.setOnCloseRequest(e -> {
-            System.out.println("Notification history window is closing.");
-        });
-        notifHistoryStage.show();
-    }
-}
-

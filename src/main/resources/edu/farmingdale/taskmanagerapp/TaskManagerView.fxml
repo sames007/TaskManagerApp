@@ -2,107 +2,126 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
 
-<BorderPane styleClass="root" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.TaskManagerController">
+<BorderPane prefHeight="600" prefWidth="900" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.TaskManagerController">
+
+    <!-- Top bar -->
     <top>
-        <VBox alignment="CENTER" spacing="10" styleClass="header-container" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets bottom="20.0" right="20.0" />
-            </padding>
-         <MenuBar>
-           <menus>
-             <Menu mnemonicParsing="false" text="Login">
-               <items>
-                 <MenuItem mnemonicParsing="false" onAction="#displaySignUp" text="Create New Account" />
-                     <MenuItem fx:id="loginToExisting" mnemonicParsing="false" onAction="#displayLogin" text="Login to Existing" />
-               </items>
-             </Menu>
-             <Menu mnemonicParsing="false" text="Edit">
-               <items>
-                 <MenuItem mnemonicParsing="false" text="Delete" />
-               </items>
-             </Menu>
-             <Menu mnemonicParsing="false" text="Help">
-               <items>
-                 <MenuItem mnemonicParsing="false" text="About" />
-               </items>
-             </Menu>
-               <Menu mnemonicParsing="false" text="Tools">
-                   <items>
-                       <MenuItem fx:id="checkOverdueTasksMenuItem" mnemonicParsing="false" onAction="#overDueTaskChecker" text=" Overdue Tasks Checker" />
-                       <MenuItem fx:id="notificationsMenuItem" onAction="#notificationHistory" text="Notifications (0)" />
-                   </items>
-               </Menu>           </menus>
-            <opaqueInsets>
-               <Insets />
-            </opaqueInsets>
-            <VBox.margin>
-               <Insets />
-            </VBox.margin>
-         </MenuBar>
-            <HBox alignment="CENTER">
-                <Label styleClass="header-label" text="Task Management System" />
+        <VBox>
+            <HBox alignment="CENTER_LEFT" prefWidth="880.0" spacing="10">
+                <padding>
+                    <Insets bottom="10.0" left="10.0" right="10.0" top="5.0" />
+                </padding>
+                <ImageView fitHeight="82.0" fitWidth="82.0" pickOnBounds="true" preserveRatio="true">
+                    <HBox.margin>
+                        <Insets left="5.0" />
+                    </HBox.margin>
+                    <Image url="@TMALogo.png" />
+                </ImageView>
+                <Label contentDisplay="CENTER" prefHeight="50.0" prefWidth="550.0" styleClass="title-label" text="Task Management System" translateY="10.0">
+               <font>
+                  <Font name="Apple SD Gothic Neo Heavy" size="38.0" />
+               </font>
+               <padding>
+                  <Insets bottom="-10.0" left="15.0" />
+               </padding>
+               <HBox.margin>
+                  <Insets bottom="10.0" right="130.0" />
+               </HBox.margin></Label>
+            <Button fx:id="notificationBtn" contentDisplay="CENTER" minWidth="-Infinity" mnemonicParsing="false" prefHeight="48.0" prefWidth="48.0" style="-fx-background-radius: 15;" translateX="32.0" translateY="2.0">
+                    <graphic>
+                        <ImageView fitHeight="35.0" fitWidth="43.0" pickOnBounds="true" preserveRatio="true">
+                            <Image url="@bell.png" />
+                        </ImageView>
+                    </graphic>
+               <HBox.margin>
+                  <Insets bottom="27.0" />
+               </HBox.margin>
+            </Button>
+            <Circle fill="DODGERBLUE" radius="8.0" stroke="BLACK" strokeType="INSIDE" style="-fx-fill: #f75c5c;" translateX="12.0" translateY="-31.0" />
+                <ImageView fitHeight="55.0" fitWidth="55.0" pickOnBounds="true" preserveRatio="true" translateX="5.0">
+                    <HBox.margin>
+                        <Insets bottom="25.0" />
+                    </HBox.margin>
+                    <Image url="@profilePicture.png" />
+                </ImageView>
             </HBox>
-            <HBox spacing="10" styleClass="input-container">
-                <TextField fx:id="taskInput" promptText="Enter task description" styleClass="task-input" HBox.hgrow="ALWAYS" />
-                <DatePicker fx:id="dueDatePicker" promptText="Due date" styleClass="date-picker" />
-                <HBox spacing="5" styleClass="time-input">
-                    <Spinner fx:id="hourSpinner" prefWidth="60" styleClass="time-spinner" />
-                    <Label styleClass="time-separator" text=":" />
-                    <Spinner fx:id="minuteSpinner" prefWidth="60" styleClass="time-spinner" />
-                    <ComboBox fx:id="amPmComboBox" prefWidth="120" promptText="AM/PM" styleClass="combo-box" />
-                </HBox>
-                <ComboBox fx:id="priorityComboBox" promptText="Priority" styleClass="combo-box" />
-                <ComboBox fx:id="categoryComboBox" promptText="Category" styleClass="combo-box" />
-                <DatePicker fx:id="reminderDatePicker" promptText="Reminder Date" styleClass="date-picker" />
-                <Button defaultButton="true" onAction="#addTask" styleClass="action-button" text="Add Task" />
-                <Button onAction="#editTask" styleClass="action-button" text="Edit Task" />
-                <Button onAction="#openChatWindow" styleClass="action-button" text="Open AI Chat" />
-            </HBox>
-         <BorderPane.margin>
-            <Insets top="-0.0" />
-         </BorderPane.margin>
         </VBox>
     </top>
+
+    <!-- Center -->
     <center>
-        <HBox spacing="10" styleClass="center-container" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets bottom="20" left="20" right="20" top="20" />
-            </padding>
-            <TableView fx:id="taskTable" prefWidth="600" styleClass="task-table" HBox.hgrow="ALWAYS">
-                <columns>
-                    <TableColumn fx:id="taskColumn" prefWidth="150" text="Task" />
-                    <TableColumn fx:id="dueDateColumn" prefWidth="100" text="Due Date" />
-                    <TableColumn fx:id="timeColumn" prefWidth="100" text="Time" />
-                    <TableColumn fx:id="priorityColumn" prefWidth="100" text="Priority" />
-                    <TableColumn fx:id="statusColumn" prefWidth="100" text="Status" />
-                </columns>
-            </TableView>
-            <VBox alignment="CENTER" spacing="10" styleClass="drag-drop-pane">
-                <Label fx:id="dropLabel" styleClass="drag-drop-label" text="Drag and drop task file here" />
-            </VBox>
-            <VBox fx:id="agendaContainer" alignment="CENTER" prefWidth="400" spacing="10" styleClass="agenda-container">
-                <Label styleClass="agenda-header" text="Agenda" />
-            </VBox>
-        </HBox>
+        <TableView fx:id="taskTable" maxHeight="-Infinity" prefHeight="440.0" prefWidth="630.0">
+            <columns>
+                <TableColumn fx:id="taskColumn" prefWidth="216.0" text="Task" />
+                <TableColumn fx:id="dueDateColumn" prefWidth="103.0" text="Due Date" />
+                <TableColumn fx:id="timeColumn" prefWidth="99.0" text="Time" />
+                <TableColumn fx:id="priorityColumn" prefWidth="105.0" text="Priority" />
+                <TableColumn fx:id="statusColumn" prefWidth="106.0" text="Status" />
+            </columns>
+        </TableView>
     </center>
+
+    <!-- Right pane -->
+    <right>
+        <VBox fx:id="agendaVbox" prefHeight="600.0" prefWidth="250" spacing="10">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+            <Label fx:id="agendaLabel" styleClass="section-label" text="Calender" textAlignment="CENTER">
+            <font>
+               <Font name="Apple SD Gothic Neo ExtraBold" size="22.0" />
+            </font>
+            <VBox.margin>
+               <Insets top="-10.0" />
+            </VBox.margin></Label>
+            <ListView fx:id="agendaList" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="100.0" prefWidth="235.0">
+            <VBox.margin>
+               <Insets top="-5.0" />
+            </VBox.margin></ListView>
+            <DatePicker fx:id="calendarView" minWidth="-Infinity" prefHeight="26.0" prefWidth="235.0" />
+            <VBox fx:id="previewPane" VBox.vgrow="ALWAYS">
+                <padding>
+                    <Insets bottom="10" left="10" right="10" top="10" />
+                </padding>
+            </VBox>
+        </VBox>
+    </right>
+
+    <!-- Bottom buttons -->
     <bottom>
-        <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="bottom-bar">
-            <Button onAction="#markTaskComplete" styleClass="action-button" text="Mark Complete" />
-            <Button onAction="#deleteTask" styleClass="action-button" text="Delete Task" />
+        <HBox alignment="CENTER_LEFT" minHeight="-Infinity" prefHeight="40.0" prefWidth="921.0" spacing="20.0">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+            <Button fx:id="addTaskButton" prefHeight="30.0" styleClass="blue-button" stylesheets="@styles.css" text="New Task" />
+            <Button fx:id="markCompleteBtn" prefHeight="30.0" styleClass="blue-button" stylesheets="@styles.css" text="Mark Complete" />
+            <Button fx:id="deleteBtn" prefHeight="30.0" styleClass="blue-button" stylesheets="@styles.css" text="Delete Task" />
+         <Label fx:id="welcomeLabel" alignment="CENTER" contentDisplay="CENTER" prefHeight="30.0" prefWidth="226.0" text="Welcome Back!" textAlignment="CENTER" textFill="#808080" translateX="-12.0" translateY="2.0">
+            <font>
+               <Font name="Avenir Light Oblique" size="20.0" />
+            </font>
+         </Label>
+         <BorderPane.margin>
+            <Insets />
+         </BorderPane.margin>
         </HBox>
     </bottom>
+
+    <!-- Global padding (if you really want it) -->
+    <padding>
+        <Insets bottom="10" left="10" right="10" top="10" />
+    </padding>
 </BorderPane>

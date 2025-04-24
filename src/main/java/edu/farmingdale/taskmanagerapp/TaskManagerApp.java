@@ -6,11 +6,16 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.util.Objects;
+
+import static javafx.scene.control.PopupControl.USE_COMPUTED_SIZE;
+
 /**
  * Main application class that loads the FXML view,
  * applies the external CSS file for styling, and shows the stage.
  */
 public class TaskManagerApp extends Application {
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         // Load the main FXML layout
@@ -27,17 +32,18 @@ public class TaskManagerApp extends Application {
         taskManagerController.setDatabaseManager(dbManager);
 
         // Create a new scene with specified width and height
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, USE_COMPUTED_SIZE, USE_COMPUTED_SIZE);
 
         // Apply external CSS files for styling the UI and chat window
-        scene.getStylesheets().add(getClass().getResource("/edu/farmingdale/taskmanagerapp/styles.css").toExternalForm());
-        scene.getStylesheets().add(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBox.css").toExternalForm());
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/edu/farmingdale/taskmanagerapp/styles.css")).toExternalForm());
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBox.css")).toExternalForm());
 
         // Set the window title and scene, then display the stage
         primaryStage.setTitle("Task Management System");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
+
 
     public static void main(String[] args) {
         launch(args);
