@@ -371,8 +371,8 @@ public class TaskManagerController {
             dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
             Scene scene = new Scene(root);
             try {
-                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
-                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("addTaskDialog.css")).toExternalForm());
+                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+                scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/addTaskDialog.css")).toExternalForm());
             } catch (NullPointerException e) {
                 System.err.println("Warning: Could Not Load One Or More CSS Files For Dialog.");
             }
@@ -551,7 +551,7 @@ public class TaskManagerController {
             Stage chatStage = new Stage();
             chatStage.setTitle("AI Chat Assist");
             Scene chatScene = new Scene(chatRoot);
-            chatScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+            chatScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
             chatStage.setScene(chatScene);
             chatStage.show();
         } catch (IOException e) {
@@ -571,7 +571,7 @@ public class TaskManagerController {
             Stage loginStage = new Stage();
             loginStage.setTitle("Login");
             Scene loginScene = new Scene(loginRoot);
-            loginScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+            loginScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
             loginStage.setScene(loginScene);
             loginStage.showAndWait();
         } catch (IOException e) {
@@ -592,7 +592,7 @@ public class TaskManagerController {
             Stage signUpStage = new Stage();
             signUpStage.setTitle("Sign Up");
             Scene signUpScene = new Scene(signUpRoot);
-            signUpScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styles.css")).toExternalForm());
+            signUpScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
             signUpStage.setScene(signUpScene);
             signUpStage.showAndWait();
         } catch (IOException e) {

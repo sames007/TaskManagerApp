@@ -35,8 +35,8 @@ public class TaskManagerApp extends Application {
         Scene scene = new Scene(root, USE_COMPUTED_SIZE, USE_COMPUTED_SIZE);
 
         // Apply external CSS files for styling the UI and chat window
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/edu/farmingdale/taskmanagerapp/styles.css")).toExternalForm());
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBox.css")).toExternalForm());
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm());
 
         // Set the window title and scene, then display the stage
         primaryStage.setTitle("Task Management System");

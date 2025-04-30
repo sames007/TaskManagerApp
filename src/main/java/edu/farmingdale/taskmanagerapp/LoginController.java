@@ -55,8 +55,8 @@ public class LoginController {
                 Scene scene = new Scene(root, 800, 600);
 
                 // Apply external CSS files for styling the UI and chat window
-                scene.getStylesheets().add(getClass().getResource("/edu/farmingdale/taskmanagerapp/styles.css").toExternalForm());
-                scene.getStylesheets().add(getClass().getResource("/edu/farmingdale/taskmanagerapp/ChatBox.css").toExternalForm());
+                scene.getStylesheets().add(getClass().getResource("styling/styles.css").toExternalForm());
+                scene.getStylesheets().add(getClass().getResource("styling/ChatBox.css").toExternalForm());
 
                 // Get the current stage (login window) and close it
                 Stage window = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();

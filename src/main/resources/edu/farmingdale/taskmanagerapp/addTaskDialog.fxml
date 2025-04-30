@@ -9,9 +9,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="520.0" prefWidth="295.0" spacing="10" style="-fx-padding: 10;" stylesheets="@addTaskDialog.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.AddTaskController">
+<VBox prefHeight="520.0" prefWidth="295.0" spacing="10" style="-fx-padding: 10;" stylesheets="@styling/addTaskDialog.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.AddTaskController">
 
-    <Label styleClass="label-title" stylesheets="@addTaskDialog.css" text="Task Description:" />
+    <Label styleClass="label-title" stylesheets="@styling/addTaskDialog.css" text="Task Description:" />
     <TextField fx:id="taskInput" promptText="Enter Task Description" />
 
     <Label styleClass="label-title" text="Due Date:" />
@@ -33,6 +33,6 @@
     <Label styleClass="label-title" text="Reminder Date (Optional):" />
     <DatePicker fx:id="reminderDatePicker" prefHeight="26.0" prefWidth="263.0" />
 
-    <Button fx:id="submitTaskButton" onAction="#submitTask" stylesheets="@addTaskDialog.css" text="Add Task" translateX="1.0" />
+    <Button fx:id="submitTaskButton" onAction="#submitTask" stylesheets="@styling/addTaskDialog.css" text="Add Task" translateX="1.0" />
 
 </VBox>
