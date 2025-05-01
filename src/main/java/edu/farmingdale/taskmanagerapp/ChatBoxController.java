@@ -44,52 +44,62 @@ public class ChatBoxController {
 
     // This method handles sending the message to the AI service
     private void sendMessage() {
-        // Get the text the user typed and remove any extra spaces
         String userInput = inputField.getText().trim();
-        if (userInput.isEmpty()) {
-            return; // Do nothing if the input is empty
-        }
-        // Show the user's message in the chat area
+        if (userInput.isEmpty()) return;
+
+        // Display user message
         chatArea.appendText("User: " + userInput + "\n");
-        // Clear the input field for the next message
         inputField.clear();
 
-        // Create the JSON payload for the AI request,
-        // escaping any quotes in the user input to avoid errors
-        String jsonPayload = "{\"contents\": [{\"parts\": [{\"text\": \""
-                + userInput.replace("\"", "\\\"") + "\"}]}]}";
+        // Escape quotes
+        String safeInput = userInput.replace("\"", "\\\"");
 
-        // Get the API key from the configuration file
+        // Build JSON payload with system_instruction + user content
+        String jsonPayload = "{"
+                + "\"system_instruction\": {"
+                + "    \"parts\": [{"
+                + "        \"text\": \"You are a helpful project‐planning assistant. "
+                + "When the user mentions a due date, generate task ideas, "
+                + "assign priorities, and suggest a schedule.\""
+                + "    }]"
+                + "},"
+                + "\"contents\": [{"
+                + "    \"parts\": [{"
+                + "        \"text\": \"" + safeInput + "\""
+                + "    }]"
+                + "}],"
+                + "\"generationConfig\": {"
+                + "    \"temperature\": 0.2,"       // more focused
+                + "    \"maxOutputTokens\": 512"   // adjust as needed
+                + "}"
+                + "}";
+
         String apiKey = AI_Helper.getAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            chatArea.appendText("Error: API key not found in config.properties.\n");
-            return; // Stop execution if the API key is missing
+            chatArea.appendText("Error: API key not found.\n");
+            return;
         }
 
-        // Build the URL for the AI API, adding the API key as a query parameter
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+        String url = "https://generativelanguage.googleapis.com/"
+                + "v1beta/models/gemini-2.0-flash:generateContent?key="
+                + apiKey;
 
-        // Build the HTTP POST request with the JSON payload and the proper header
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .build();
 
-        // Send the HTTP request asynchronously
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)  // Get the response body
-                .thenAccept(responseBody -> Platform.runLater(() -> {
-                    // Parse the response to extract the AI's text answer
-                    String aiResponse = parseResponse(responseBody);
-                    // Format the response text so that newline escapes become real newlines
+                .thenApply(HttpResponse::body)
+                .thenAccept(body -> Platform.runLater(() -> {
+                    String aiResponse = parseResponse(body);
                     aiResponse = formatAIResponse(aiResponse);
-                    // Display the AI's response in the chat area
                     chatArea.appendText("AI: " + aiResponse + "\n");
                 }))
                 .exceptionally(e -> {
-                    // If there is an error during the HTTP call, display the error message
-                    Platform.runLater(() -> chatArea.appendText("Error: " + e.getMessage() + "\n"));
+                    Platform.runLater(() ->
+                            chatArea.appendText("Error: " + e.getMessage() + "\n"));
                     return null;
                 });
     }
