@@ -11,6 +11,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -18,6 +19,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The NotificationService class is responsible for managing task due notifications.
+ * It periodically checks tasks and displays notifications for tasks that are due soon.
+ * Notifications are presented as visually styled pop-ups in the bottom-right corner
+ * of the screen.
+ * - Regularly checks tasks for due dates within a specific time threshold.
+ * - Displays pop-up notifications for tasks that are due soon.
+ * - Manages the lifecycle of the notification service and active notifications.
+ */
 public class NotificationService {
     private static final int NOTIFICATION_DURATION = 5000; // 5 seconds
     private static final int CHECK_INTERVAL = 60000; // Check every minute
@@ -25,6 +35,10 @@ public class NotificationService {
     private static final List<Stage> activeNotifications = new ArrayList<>();
     private static Timeline notificationCheckTimeline;
 
+    /**
+     * Starts the notification service.
+     * @param controller The main controller
+     */
     public static void startNotificationService(TaskManagerController controller) {
         if (notificationCheckTimeline != null) {
             notificationCheckTimeline.stop();
@@ -37,6 +51,9 @@ public class NotificationService {
         notificationCheckTimeline.play();
     }
 
+    /**
+     * @param controller The main controller
+     */
     private static void checkDueTasks(TaskManagerController controller) {
         Platform.runLater(() -> {
             for (Task task : controller.getTasks()) {
@@ -47,7 +64,11 @@ public class NotificationService {
         });
     }
 
-    private static boolean shouldNotifyTask(Task task) {
+    /**
+     * @param task The task to check
+     * @return True if the task is due soon, false otherwise
+     */
+    private static boolean shouldNotifyTask(@NotNull Task task) {
         if (task.getStatus().equals("Completed")) {
             return false;
         }
@@ -60,6 +81,9 @@ public class NotificationService {
         return hoursUntilDue > 0 && hoursUntilDue <= DUE_SOON_THRESHOLD;
     }
 
+    /**
+     * @param task The task to notify
+     */
     public static void showNotification(Task task) {
         Platform.runLater(() -> {
             Stage notificationStage = new Stage(StageStyle.TRANSPARENT);
@@ -119,6 +143,9 @@ public class NotificationService {
         });
     }
 
+    /**
+     * Stops the notification service.
+     */
     public static void stopNotificationService() {
         if (notificationCheckTimeline != null) {
             notificationCheckTimeline.stop();

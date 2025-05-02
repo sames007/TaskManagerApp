@@ -1,13 +1,17 @@
 package edu.farmingdale.taskmanagerapp;
 
 import javafx.collections.ObservableList;
+import org.jetbrains.annotations.NotNull;
+
 import java.sql.*;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * The DatabaseManager class is responsible for managing a connection to the database
+ * and performing various operations such as user account management and task management.
+ */
 public class DatabaseManager {
     private static final Logger LOGGER = Logger.getLogger(DatabaseManager.class.getName());
     private static final String DB_URL = "jdbc:mysql://taskmanagerdbserver.mysql.database.azure.com:3306/TaskManagerDB";
@@ -18,10 +22,16 @@ public class DatabaseManager {
 
     private Connection conn;
 
+    /**
+     * Constructor to initialize the connection
+     */
     public DatabaseManager() {
         initializeConnection();
     }
 
+    /**
+     * Initializes the database connection.
+     */
     public void initializeConnection() {
         int retries = 0;
         while (retries < MAX_RETRIES) {
@@ -35,9 +45,9 @@ public class DatabaseManager {
                 
                 conn = DriverManager.getConnection(DB_URL, props);
                 
-                // Check if ProfilePicturePath column exists and add it if it doesn't
+                // Check if the ProfilePicturePath column exists and add it if it doesn't
                 try (Statement stmt = conn.createStatement()) {
-                    // Check if column exists
+                    // Check if a column exists
                     ResultSet rs = conn.getMetaData().getColumns(null, null, "users", "ProfilePicturePath");
                     if (!rs.next()) {
                         // Column doesn't exist, so add it
@@ -66,6 +76,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @return The database connection
+     */
     private Connection getConnection() {
         try {
             if (conn == null || conn.isClosed()) {
@@ -78,6 +91,10 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param userName The name of the user
+     * @return The user's ID
+     */
     private int getUserID(String userName) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT UserID FROM users WHERE UserName = ?")) {
             stmt.setString(1, userName);
@@ -92,6 +109,9 @@ public class DatabaseManager {
         return -1; // Return -1 if not found
     }
 
+    /**
+     * Inserts a default user if none exist
+     */
     private void insertDefaultUser() {
         try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO users (UserID, UserName) VALUES (?, ?)")) {
             stmt.setInt(1, 1); // Assuming default user ID
@@ -102,6 +122,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param s The user session to register
+     */
     public void registerUser(UserSession s) {
         if (s == null || s.getUserName() == null || s.getPassword() == null || s.getEmail() == null) {
             throw new IllegalArgumentException("Invalid user session data");
@@ -126,6 +149,10 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param email The email of the user
+     * @return The user session
+     */
     public UserSession getAccount(String email) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
             stmt.setString(1, email);
@@ -140,7 +167,7 @@ public class DatabaseManager {
                     try {
                         s.setProfilePicturePath(rs.getString("ProfilePicturePath"));
                     } catch (SQLException e) {
-                        // If column doesn't exist, set default profile picture
+                        // If the column doesn't exist, set the default profile picture
                         s.setProfilePicturePath("/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
                     }
                     return s;
@@ -153,6 +180,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param task The task to add
+     */
     public void addTask(Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Tasks (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             stmt.setString(1, task.getDescription());
@@ -161,7 +191,7 @@ public class DatabaseManager {
             stmt.setInt(4, getPriorityID(task.getPriority()));
             stmt.setInt(5, getCategoryID(task.getCategory()));
 
-            // Check if user exists, otherwise insert a default user
+            // Check if a user exists, otherwise insert a default user
             int userID = getUserID("DefaultUser");
             if (userID == -1) {
                 insertDefaultUser();
@@ -185,6 +215,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param task The task to update
+     */
     public void updateTask(Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ? WHERE TaskID = ?")) {
             stmt.setString(1, task.getDescription());
@@ -200,6 +233,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * @param taskID The ID of the task to mark as complete
+     */
     public void markTaskComplete(int taskID) {
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Status = 'Completed' WHERE TaskID = ?")) {
             stmt.setInt(1, taskID);
@@ -210,6 +246,10 @@ public class DatabaseManager {
     }
 
     // Helper methods to get IDs for priority and category
+    /**
+     * @param priority The priority level
+     * @return The priority ID
+     */
     private int getPriorityID(String priority) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT PriorityID FROM Priorities WHERE PriorityLevel = ?")) {
             stmt.setString(1, priority);
@@ -224,6 +264,10 @@ public class DatabaseManager {
         return -1; // Return -1 if not found
     }
 
+    /**
+     * @param category The category name
+     * @return The category ID
+     */
     private int getCategoryID(String category) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT CategoryID FROM Categories WHERE CategoryName = ?")) {
             stmt.setString(1, category);
@@ -231,7 +275,7 @@ public class DatabaseManager {
                 if (rs.next()) {
                     return rs.getInt("CategoryID");
                 } else {
-                    // Insert missing category and return its ID
+                    // Insert the missing category and return its ID
                     try (PreparedStatement insertStmt = conn.prepareStatement("INSERT INTO Categories (CategoryName) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
                         insertStmt.setString(1, category);
                         insertStmt.executeUpdate();
@@ -252,6 +296,9 @@ public class DatabaseManager {
     }
 
     // Method to retrieve all tasks from the database
+    /**
+     * @param tasks The list to add tasks to
+     */
     public void loadTasks(ObservableList<Task> tasks) {
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM Tasks")) {
             while (rs.next()) {
@@ -273,6 +320,10 @@ public class DatabaseManager {
     }
 
     // Helper methods to get names for priority and category
+    /**
+     * @param priorityID The ID of the priority
+     * @return The priority name
+     */
     private String getPriorityName(int priorityID) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT PriorityLevel FROM Priorities WHERE PriorityID = ?")) {
             stmt.setInt(1, priorityID);
@@ -284,9 +335,13 @@ public class DatabaseManager {
         } catch (SQLException e) {
             System.out.println("Error getting priority name: " + e.getMessage());
         }
-        return ""; // Return empty string if not found
+        return ""; // Return an empty string if not found
     }
 
+    /**
+     * @param categoryID The ID of the category
+     * @return The category name
+     */
     private String getCategoryName(int categoryID) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT CategoryName FROM Categories WHERE CategoryID = ?")) {
             stmt.setInt(1, categoryID);
@@ -298,10 +353,14 @@ public class DatabaseManager {
         } catch (SQLException e) {
             System.out.println("Error getting category name: " + e.getMessage());
         }
-        return ""; // Return empty string if not found
+        return ""; // Return an empty string if not found
     }
 
-    public void updateProfilePicture(String userName, String profilePicturePath) {
+    /**
+     * @param userName The name of the user
+     * @param profilePicturePath The path to the profile picture
+     */
+    public void updateProfilePicture(@NotNull String userName, String profilePicturePath) {
         try (PreparedStatement stmt = conn.prepareStatement(
                 "UPDATE users SET ProfilePicturePath = ? WHERE UserName = ?")) {
             stmt.setString(1, profilePicturePath);
@@ -313,7 +372,10 @@ public class DatabaseManager {
         }
     }
 
-    public void updateUserProfilePicture(UserSession user) {
+    /**
+     * @param user The user session to update
+     */
+    public void updateUserProfilePicture(@NotNull UserSession user) {
         try (PreparedStatement stmt = conn.prepareStatement(
                 "UPDATE users SET ProfilePicturePath = ? WHERE UserID = ?")) {
             stmt.setString(1, user.getProfilePicturePath());
@@ -326,6 +388,9 @@ public class DatabaseManager {
     }
 
     // Close the connection when done
+    /**
+     * Closes the database connection
+     */
     public void closeConnection() {
         if (conn != null) {
             try {

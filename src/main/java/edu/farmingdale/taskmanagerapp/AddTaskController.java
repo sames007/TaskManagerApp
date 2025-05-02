@@ -7,6 +7,9 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+/**
+ * Controller for the Add Task dialog.
+ */
 public class AddTaskController {
 
     @FXML
@@ -33,10 +36,17 @@ public class AddTaskController {
     private boolean editMode = false;
 
     // Setter to inject the main controller
+
+    /**
+     * @param mainController the main controller to set
+     */
     public void setMainController(TaskManagerController mainController) {
         this.mainController = mainController;
     }
 
+    /**
+     * @param task the task to edit
+     */
     public void setTaskToEdit(Task task) {
         this.taskToEdit = task;
         this.editMode = (task != null);
@@ -50,6 +60,9 @@ public class AddTaskController {
         }
     }
 
+    /**
+     * Populates the fields for adding tasks
+     */
     private void populateFields() {
         if (taskToEdit == null) {
             return;
@@ -90,6 +103,9 @@ public class AddTaskController {
         reminderDatePicker.setValue(taskToEdit.getReminder());
     }
 
+    /**
+     * Initializes the controller after the FXML file is loaded.
+     */
     @FXML
     public void initialize() {
         // Initialize ComboBoxes with their items
@@ -131,30 +147,37 @@ public class AddTaskController {
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
 
-        // Set initial button text
+        // Set the initial button text
         submitTaskButton.setText("Add Task");
 
         // Add validation listeners
         addValidationListeners();
     }
 
+    /**
+     * Adds listeners to update the button state based on required fields.
+     */
     private void addValidationListeners() {
-        // Add listeners to update button state based on required fields
         taskInput.textProperty().addListener((obs, oldVal, newVal) -> validateFields());
         dueDatePicker.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
         priorityComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
         categoryComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
     }
 
+    /**
+     * Validates Fields To Make Sure All Required Fields Are Filled
+     */
     private void validateFields() {
         boolean isValid = !taskInput.getText().trim().isEmpty() &&
                          dueDatePicker.getValue() != null &&
                          priorityComboBox.getValue() != null &&
                          categoryComboBox.getValue() != null;
-        
         submitTaskButton.setDisable(!isValid);
     }
 
+    /**
+     * Clears all fields in the dialog.
+     */
     private void clearFields() {
         taskInput.clear();
         dueDatePicker.setValue(null);
@@ -166,6 +189,9 @@ public class AddTaskController {
         reminderDatePicker.setValue(null);
     }
 
+    /**
+     * Called when the user clicks the "Submit Task" button.
+     */
     @FXML
     private void submitTask() {
         // --- Validation (similar to original addTask) ---
@@ -181,14 +207,12 @@ public class AddTaskController {
         if (!isValid(description, dueDate, hour, minute, amPm, priority, category)) {
             return; // showAlert is called within isValidInput
         }
-
         // Convert time using the helper method from the main controller
         LocalTime dueTime = mainController.convertToLocalTime(hour, minute, amPm);
         if (dueTime == null) {
             mainController.showAlert("Invalid Time"); // Handle potential null from conversion
             return;
         }
-
         if (editMode && taskToEdit != null) {
             taskToEdit.setDescription(description);
             taskToEdit.setDueDate(dueDate);
@@ -206,12 +230,20 @@ public class AddTaskController {
 
             mainController.addNewTaskFrom(newTask);
         }
-
-        // Close the dialog window
         closeDialog();
     }
 
-
+    /**
+     * Validates the task input fields to ensure all required data is present and valid.
+     * @param description the task description text
+     * @param dueDate the due date for the task
+     * @param hour the hour component of the due time (1-12)
+     * @param minute the minute component of the due time (0-59)
+     * @param amPm the AM/PM indicator for the due time
+     * @param priority the priority level of the task
+     * @param category the category the task belongs to
+     * @return true if all inputs are valid, false otherwise
+     */
     private boolean isValid(String description, LocalDate dueDate, Integer hour, Integer minute,
     String amPm, String priority, String category) {
         if (description.isEmpty() || dueDate == null || hour == null || minute == null
@@ -219,16 +251,18 @@ public class AddTaskController {
             mainController.showAlert("Please Fill All Required Fields (Description, Due Date, Time, Priority, Category)");
             return false;
         }
-        // Ensure due date is today or later (allowing same-day tasks might be useful)
         if (dueDate.isBefore(LocalDate.now())) {
             mainController.showAlert("Due Date Cannot Be In The Past.");
             return false;
         }
 
-        // Add any other specific validation rules here (e.g., description length)
         return true;
     }
+
     // Helper to close the dialog window
+    /**
+     * Closes the dialog window.
+     */
     private void closeDialog() {
         Stage stage = (Stage) submitTaskButton.getScene().getWindow();
         if (stage != null) {

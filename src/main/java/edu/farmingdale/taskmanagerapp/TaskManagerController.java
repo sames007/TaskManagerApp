@@ -6,7 +6,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -27,6 +26,8 @@ import java.util.Objects;
 import java.util.List;
 import java.util.ArrayList;
 import javafx.scene.image.ImageView;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Controller for managing tasks. It handles adding, editing,
@@ -76,7 +77,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Setter for DatabaseManager instance.
-     *
      * @param dbManager the DatabaseManager to use for DB operations.
      */
     public void setDatabaseManager(DatabaseManager dbManager) {
@@ -84,7 +84,11 @@ public class TaskManagerController extends Application {
         loadTasksFromDb();
     }
 
+    /**
+     * Default constructor.
+     */
     public TaskManagerController() {}
+
     /**
      * Initializes the controller after the FXML file is loaded.
      * Sets up the ComboBoxes, TableView columns, Spinners, and agenda.
@@ -161,6 +165,9 @@ public class TaskManagerController extends Application {
         Platform.runLater(this::refreshAgendaAppointments);
     }
 
+    /**
+     * Loads tasks from the database and updates the TableView.
+     */
     private void loadTasksFromDb() {
         if (dbManager != null) {
             tasks.clear();
@@ -174,7 +181,7 @@ public class TaskManagerController extends Application {
     }
 
     /**
-     * Refreshes the Agenda control with appointments based on the tasks list.
+     * Refreshes the Agenda control with appointments based on the tasks in the list.
      */
     private void refreshAgendaAppointments() {
         if (agenda == null) {
@@ -214,6 +221,10 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param priority the priority of the task
+     * @return the appropriate AppointmentGroup
+     */
     private Agenda.AppointmentGroup getAppointmentGroupForPriority(String priority) {
 
         Agenda.AppointmentGroup highPriorityGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-high");
@@ -315,7 +326,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Helper method to display an information alert with the provided message.
-     *
      * @param message the message to display in the alert
      */
     public void showAlert(String message) {
@@ -331,7 +341,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Helper method to convert 12-hour time (with AM/PM) into 24-hour format.
-     *
      * @param hour   the hour value (1-12)
      * @param minute the minute value (0-59)
      * @param amPm   "AM" or "PM"
@@ -419,7 +428,9 @@ public class TaskManagerController extends Application {
         }
     }
 
-
+    /**
+     * @param newTask the new task to add
+     */
     public void addNewTaskFromDialog(Task newTask) {
         if (newTask == null) {
             showAlert("Invalid task data.");
@@ -445,6 +456,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param updatedTask the task to update
+     */
     public void updateTaskFromDialog(Task updatedTask) {
         if (updatedTask == null) {
             System.err.println("updateTaskFromDialog Called With NULL Task");
@@ -471,6 +485,10 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Add Task dialog window.
+     */
+    @FXML
     private void showEditTaskDialog() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("AddTaskDialog.fxml"));
@@ -500,6 +518,7 @@ public class TaskManagerController extends Application {
             showAlert("Could Not Open Edit Task Window - Check FXML File");
         }
     }
+
     /**
      * Adds a new task received from the dialog, updates DB, and refreshes UI.
      * This method is called by AddTaskDialogController.
@@ -530,6 +549,7 @@ public class TaskManagerController extends Application {
             System.err.println("'addNewTask' Called With EMPTY Task");
         }
     }
+
     /**
      * Adds an imported task (from a file) to the list and refreshes the table.
      *
@@ -546,7 +566,6 @@ public class TaskManagerController extends Application {
                 } catch (Exception e) {
                     System.out.println("Error Saving To Database: " + e.getMessage());
                     showAlert("Error Saving To Database.");
-                    return;
                 }
             } else {
                 tasks.add(task);
@@ -583,6 +602,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Login window when the user clicks the "Login" button.
+     */
     @FXML
     private void displayLogin() {
         try {
@@ -604,6 +626,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Sign-Up window when the user clicks the "Sign Up" button.
+     */
     @FXML
     private void displaySignUp() {
         try {
@@ -625,6 +650,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param taskToEdit the task to edit
+     */
     public void updateTaskFrom(Task taskToEdit) {
         if (taskToEdit == null) {
             System.err.println("updateTaskFrom called with a null task.");
@@ -695,7 +723,7 @@ public class TaskManagerController extends Application {
         Separator separator = new Separator();
         separator.setStyle("-fx-background-color: #bdc3c7;");
 
-        // Tasks list section
+        // Tasks list a section
         Label upcomingTasksLabel = new Label("Tasks Due Soon:");
         upcomingTasksLabel.setStyle(
             "-fx-font-size: 18px;" +
@@ -728,7 +756,7 @@ public class TaskManagerController extends Application {
             if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
                 hasUpcomingTasks = true;
                 
-                // Create task card
+                // Create a task card
                 VBox taskCard = new VBox(5);
                 taskCard.setStyle(
                     "-fx-background-color: white;" +
@@ -751,7 +779,7 @@ public class TaskManagerController extends Application {
                 
                 taskHeader.getChildren().addAll(priorityIndicator, taskDesc);
 
-                // Due time and category
+                // The Due time and category
                 Label dueInfo = new Label(String.format("Due in %d hours • %s",
                     hoursUntilDue, task.getCategory()));
                 dueInfo.setStyle("-fx-text-fill: #7f8c8d;");
@@ -797,7 +825,7 @@ public class TaskManagerController extends Application {
             "-fx-padding: 20;"
         );
 
-        // Add OK button
+        // Add the OK button
         dialogPane.getButtonTypes().add(ButtonType.OK);
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         okButton.setStyle(
@@ -810,6 +838,12 @@ public class TaskManagerController extends Application {
         dialog.showAndWait();
     }
 
+    /**
+     * @param priority the priority of the task
+     * @return the appropriate color string
+     */
+    @NotNull
+    @Contract(pure = true)
     private String getPriorityColor(String priority) {
         if (priority == null) return "-fx-fill: #95a5a6;"; // Default gray
 
@@ -822,16 +856,29 @@ public class TaskManagerController extends Application {
         };
     }
 
+    /**
+     * Initializes the application.
+     * @param primaryStage the primary stage for this application, onto which
+     * the application scene can be set.
+     * Applications may create other stages, if needed, but they will not be
+     * primary stages.
+     */
     @Override
     public void start(Stage primaryStage) {
         // This method is required by Application but not used in this controller
     }
 
+    /**
+     * Called when the application is stopped.
+     */
     @Override
     public void stop() {
         NotificationService.stopNotificationService();
     }
 
+    /**
+     * Called when the user clicks the "Logout" button.
+     */
     public void handleLogout() {
         tasks.clear();
         welcomeLabel.setText("Welcome!");
@@ -841,6 +888,10 @@ public class TaskManagerController extends Application {
         showAlert("Successfully logged out!");
     }
 
+    /**
+     * Sets the current user.
+     * @param user the user to set as the current user
+     */
     public void setCurrentUser(UserSession user) {
         if (profileManager != null) {
             profileManager.setCurrentUser(user);
@@ -854,17 +905,23 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @return the DatabaseManager instance
+     */
     public DatabaseManager getDbManager() {
         return dbManager;
     }
 
+    /**
+     * Displays the login screen.
+     */
     public void showLoginScreen() {
         try {
             FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
             Parent loginRoot = loginLoader.load();
             
             LoginController loginController = loginLoader.getController();
-            loginController.setMainController(this); // Changed to setMainController to match pattern from SignUpController
+            loginController.setMainController(this); // Changed to setMainController to match a pattern from SignUpController
             
             Stage loginStage = new Stage();
             loginStage.setTitle("Login");
@@ -881,6 +938,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Displays the sign-up screen.
+     */
     public void showSignUpScreen() {
         try {
             FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));

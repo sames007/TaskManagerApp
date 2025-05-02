@@ -6,6 +6,8 @@ import javafx.scene.control.Label;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.VBox;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -20,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 public class FileProcessorController {
     @FXML private VBox dropZone; // The area where files can be dropped
     @FXML private Label dropLabel; // Label inside the drop zone
-    private TaskManagerController taskManagerController; // Reference to main task controller
+    private TaskManagerController taskManagerController; // Reference to the main task controller
     private DatabaseManager dbManager;
 
     /**
@@ -60,7 +62,7 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When file enters drop zone, update style and label text
+        // When a file enters drop zone, update style and label text
         dropZone.setOnDragEntered(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 dropZone.getStyleClass().add("drop-zone-hover");
@@ -69,7 +71,7 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When file leaves, remove hover style and reset label text
+        // When a file leaves, remove hover-style and reset label text
         dropZone.setOnDragExited(event -> {
             dropZone.getStyleClass().remove("drop-zone-hover");
             dropLabel.setText("Drag and drop task file here");
@@ -117,7 +119,7 @@ public class FileProcessorController {
      * and creates tasks in the TaskManagerController.
      * @param content the complete file content as a String
      */
-    private void processFileContent(String content) {
+    private void processFileContent(@NotNull String content) {
         // Split the file into sections separated by blank lines
         String[] sections = content.split("\n\n");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -136,7 +138,7 @@ public class FileProcessorController {
                     try {
                         deadline = LocalDate.parse(dateStr, formatter);
                     } catch (Exception e) {
-                        // Skip if date is not valid
+                        // Skip if a date is not valid
                         continue;
                     }
                 } else if (line.startsWith("Description:")) {
@@ -156,7 +158,7 @@ public class FileProcessorController {
                     }
                 }
             }
-            // Create and add the task if taskName and deadline are valid
+            // Create and add the task if the taskName and deadline are valid
             if (!taskName.isEmpty() && deadline != null) {
                 Task task = new Task(
                         taskName + (description.isEmpty() ? "" : " - " + description),
@@ -170,7 +172,7 @@ public class FileProcessorController {
                     taskManagerController.addImportedTask(task);
                 }
 
-                // Save task to database if available
+                // Save task to the database if available
                 if (dbManager != null) {
                     dbManager.addTask(task);
                 }

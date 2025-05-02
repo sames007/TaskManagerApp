@@ -1,5 +1,8 @@
 package edu.farmingdale.taskmanagerapp;
 
+/**
+ * Gets User Details 
+ */
 public class UserSession {
     private static UserSession instance;
     private int userID;
@@ -8,6 +11,11 @@ public class UserSession {
     private String password;
     private String profilePicturePath;
 
+    /**
+     * @param userName User's name
+     * @param email User's email
+     * @param password User's password
+     */
     public UserSession(String userName, String email, String password) {
         this.userName = userName;
         this.email = email;
@@ -16,46 +24,90 @@ public class UserSession {
         this.profilePicturePath = null;
     }
 
+
+    /**
+     * Gets the user's name
+     * @return the user's name
+     */
     public String getUserName() {
         return userName;
     }
 
+    /**
+     * Sets the user's name
+     * @param userName the user's name to set
+     */
     public void setUserName(String userName) {
         this.userName = userName;
     }
 
+    /**
+     * Gets the user's password
+     * @return the user's password
+     */
     public String getPassword() {
         return password;
     }
 
+    /**
+     * Sets the user's password
+     * @param password the password to set
+     */
     public void setPassword(String password) {
         this.password = password;
     }
 
+    /**
+     * Gets the user's email
+     * @return the user's email
+     */
     public String getEmail() {
         return email;
     }
 
+    /**
+     * Sets the user's email
+     * @param email the email to set
+     */
     public void setEmail(String email) {
         this.email = email;
     }
 
+    /**
+     * Gets the user's ID
+     * @return the user's ID
+     */
     public int getUserID() {
         return userID;
     }
 
+    /**
+     * Sets the user's ID
+     * @param userID the user ID to set
+     */
     public void setUserID(int userID) {
         this.userID = userID;
     }
 
+    /**
+     * Gets the path to the user's profile picture
+     * @return the profile picture path
+     */
     public String getProfilePicturePath() {
         return profilePicturePath;
     }
 
+    /**
+     * Sets the path to the user's profile picture
+     * @param profilePicturePath the profile picture path to set
+     */
     public void setProfilePicturePath(String profilePicturePath) {
         this.profilePicturePath = profilePicturePath;
     }
 
+    /**
+     * Erases User Information
+     */
     public void cleanUserSession() {
         this.userID = 0;
         this.userName = "";

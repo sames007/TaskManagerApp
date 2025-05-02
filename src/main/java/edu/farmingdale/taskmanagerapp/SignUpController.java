@@ -7,6 +7,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+/**
+ * Controller for the sign-up screen.
+ */
 public class SignUpController {
     @FXML
     private TextField usernameField, emailField, passwordField;
@@ -15,13 +18,22 @@ public class SignUpController {
     
     private TaskManagerController mainController;
 
-    public void initialize() {
-    }
+    /**
+     * Initializes the controller after the FXML file is loaded.
+     */
+    public void initialize() {}
 
+    /**
+     * @param controller The main controller
+     */
     public void setMainController(TaskManagerController controller) {
         this.mainController = controller;
     }
 
+    /**
+     * Handles the create account button click.
+     * @param actionEvent The event triggered by the button click
+     */
     @FXML
     public void createNewAccount(ActionEvent actionEvent) {
         try {
@@ -49,12 +61,29 @@ public class SignUpController {
         } catch (Exception e) {
             mainController.showAlert("Error creating account: " + e.getMessage());
         }
-        }
+    }
 
-    @FXML
-    public void handleBack() {
+        /**
+         * Handles the back button click.
+         */
+        @FXML
+        public void handleBack() {
         Stage stage = (Stage) backButton.getScene().getWindow();
         stage.close();
+    }
+
+    /**
+     * @return The get creation button
+     */
+    public Button getCreateButton() {
+        return createButton;
+    }
+
+    /**
+     * @param createButton The set creation button
+     */
+    public void setCreateButton(Button createButton) {
+        this.createButton = createButton;
     }
 }
 

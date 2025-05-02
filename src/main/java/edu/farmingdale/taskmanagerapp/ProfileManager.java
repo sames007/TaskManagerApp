@@ -3,16 +3,19 @@ package edu.farmingdale.taskmanagerapp;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 
+/**
+ * The ProfileManager class handles the management of user profiles,
+ * including profile picture updates, displaying user-specific options,
+ * and session-related functionality.
+ */
 public class ProfileManager {
     private static final String DEFAULT_PROFILE_PIC = "/edu/farmingdale/taskmanagerapp/images/profilePicture.png";
     private static final String PROFILE_PICS_DIR = "profile_pictures";
@@ -20,16 +23,26 @@ public class ProfileManager {
     private ImageView profilePicture;
     private UserSession currentUser;
 
+    /**
+     * Constructor for the ProfileManager.
+     * @param controller The main controller
+     */
     public ProfileManager(TaskManagerController controller) {
         this.mainController = controller;
         createProfilePicsDirectory();
     }
 
+    /**
+     * @param profilePicture The ImageView to initialize
+     */
     public void initialize(ImageView profilePicture) {
         this.profilePicture = profilePicture;
         setupProfilePictureClickHandler();
     }
 
+    /**
+     * Sets up the click handler for the profile picture.
+     */
     private void setupProfilePictureClickHandler() {
         if (profilePicture != null) {
             profilePicture.setOnMouseClicked(event -> {
@@ -42,6 +55,9 @@ public class ProfileManager {
         }
     }
 
+    /**
+     * Shows the not logged-in menu.
+     */
     private void showNotLoggedInMenu() {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem loginItem = new MenuItem("Login");
@@ -55,6 +71,9 @@ public class ProfileManager {
                         profilePicture.getScene().getWindow().getY() + profilePicture.getLayoutY());
     }
 
+    /**
+     * Shows the logged-in menu.
+     */
     private void showLoggedInMenu() {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem changePictureItem = new MenuItem("Change Profile Picture");
@@ -70,6 +89,9 @@ public class ProfileManager {
                         profilePicture.getScene().getWindow().getY() + profilePicture.getLayoutY());
     }
 
+    /**
+     * Changes the profile picture.
+     */
     private void changeProfilePicture() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Profile Picture");
@@ -99,6 +121,9 @@ public class ProfileManager {
         }
     }
 
+    /**
+     * Views the user's profile.
+     */
     private void viewProfile() {
         if (currentUser != null) {
             mainController.showAlert("Profile Information:\nUsername: " + currentUser.getUserName() + 
@@ -106,12 +131,19 @@ public class ProfileManager {
         }
     }
 
+    /**
+     * Logs out the user.
+     */
     private void logout() {
         currentUser = null;
         mainController.handleLogout();
         resetProfilePicture();
     }
 
+    /**
+     * Sets the current user.
+     * @param user The user to set
+     */
     public void setCurrentUser(UserSession user) {
         this.currentUser = user;
         if (user != null && user.getProfilePicturePath() != null) {
@@ -131,11 +163,17 @@ public class ProfileManager {
         }
     }
 
+    /**
+     * Resets the profile picture to the default image.
+     */
     private void resetProfilePicture() {
-        Image defaultImage = new Image(getClass().getResourceAsStream(DEFAULT_PROFILE_PIC));
+        Image defaultImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream(DEFAULT_PROFILE_PIC)));
         profilePicture.setImage(defaultImage);
     }
 
+    /**
+     * Creates the profile pictures directory if it doesn't exist.
+     */
     private void createProfilePicsDirectory() {
         try {
             Files.createDirectories(Paths.get(PROFILE_PICS_DIR));

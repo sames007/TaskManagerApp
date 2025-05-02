@@ -1,18 +1,17 @@
 package edu.farmingdale.taskmanagerapp;
 
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import javafx.event.ActionEvent;
 
-import java.io.IOException;
-
+/**
+ * Controller for the login screen.
+ */
 public class LoginController {
+
     @FXML
     private TextField emailTextField, passwordTextField;
     @FXML
@@ -20,14 +19,23 @@ public class LoginController {
 
     private TaskManagerController mainController;
 
+    /**
+     * Initializes the controller after the FXML file is loaded.
+     */
     @FXML
-    public void initialize() {
-    }
+    public void initialize() {}
 
+    /**
+     * @param controller The main controller
+     */
     public void setMainController(TaskManagerController controller) {
         this.mainController = controller;
     }
 
+    /**
+     * Handles the login button click.
+     * @param actionEvent The event triggered by the button click
+     */
     @FXML
     public void login(ActionEvent actionEvent) {
         try {
@@ -48,8 +56,11 @@ public class LoginController {
         } catch (Exception e) {
             mainController.showAlert("Error during login: " + e.getMessage());
         }
-        }
+    }
 
+    /**
+     * Handles the back button click.
+     */
     @FXML
     public void handleBack() {
         Stage stage = (Stage) backButton.getScene().getWindow();

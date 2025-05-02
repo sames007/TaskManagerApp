@@ -4,6 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+/**
+ * The AI_Helper class is a utility class designed to manage configuration properties
+ * for an application.
+ * The configuration file is expected to be located in the classpath under
+ * "edu/farmingdale/taskmanagerapp/config.properties".
+ * A static block is used to ensure that the configuration file is loaded when the
+ * class is first accessed.
+ */
 public class AI_Helper {
     // A Properties object to hold our key-value pairs from the config file
     private static final Properties properties = new Properties();
@@ -26,6 +34,10 @@ public class AI_Helper {
     }
 
     // Public method to get the API key from the loaded properties
+
+    /**
+     * @return the API key as a String
+     */
     public static String getAPIKey() {
         return properties.getProperty("API_KEY");
     }
