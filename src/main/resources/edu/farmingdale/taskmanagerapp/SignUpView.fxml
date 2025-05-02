@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
+<?import javafx.scene.layout.HBox?>
 
-<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.SignUpController">
-   <children>
-      <TextField fx:id="usernameField" layoutX="225.0" layoutY="174.0" promptText="Create username..." />
-      <TextField fx:id="emailField" layoutX="225.0" layoutY="228.0" promptText="Enter email..." />
-      <TextField fx:id="passwordField" layoutX="226.0" layoutY="280.0" promptText="Enter password..." />
-      <Text layoutX="251.0" layoutY="105.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Create an Account" />
-      <Button fx:id="createButton" layoutX="226.0" layoutY="332.0" mnemonicParsing="false" onAction="#createNewAccount" text="Create" />
-      <Button layoutX="335.0" layoutY="332.0" mnemonicParsing="false" text="Back" />
-   </children>
-</AnchorPane>
+<VBox alignment="CENTER" spacing="20" style="-fx-background-color: #ADD8E6;" prefHeight="400.0" prefWidth="600.0" 
+      stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="edu.farmingdale.taskmanagerapp.SignUpController">
+    
+    <padding>
+        <Insets bottom="20.0" left="40.0" right="40.0" top="20.0" />
+    </padding>
+
+    <Text styleClass="title-label" text="Create an Account" />
+    
+    <TextField fx:id="usernameField" styleClass="auth-field" promptText="Create username..." maxWidth="300" />
+    <TextField fx:id="emailField" styleClass="auth-field" promptText="Enter email..." maxWidth="300" />
+    <TextField fx:id="passwordField" styleClass="auth-field" promptText="Enter password..." maxWidth="300" />
+    
+    <HBox alignment="CENTER" spacing="20">
+        <Button fx:id="createButton" styleClass="blue-button" onAction="#createNewAccount" text="Create" />
+        <Button fx:id="backButton" styleClass="blue-button" onAction="#handleBack" text="Back" />
+    </HBox>
+</VBox>

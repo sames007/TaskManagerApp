@@ -45,14 +45,7 @@ public class AddTaskController {
             populateFields();
             submitTaskButton.setText("Update Task");
         } else {
-            taskInput.clear();
-            dueDatePicker.setValue(null);
-            hourSpinner.getValueFactory().setValue(12);
-            minuteSpinner.getValueFactory().setValue(0);
-            amPmComboBox.setValue("AM");
-            priorityComboBox.setValue(null);
-            categoryComboBox.setValue(null);
-            reminderDatePicker.setValue(null);
+            clearFields();
             submitTaskButton.setText("Add Task");
         }
     }
@@ -99,10 +92,30 @@ public class AddTaskController {
 
     @FXML
     public void initialize() {
-        // Initialize ComboBoxes and Spinners (similar to how it was in TaskManagerController)
+        // Initialize ComboBoxes with their items
         priorityComboBox.setItems(FXCollections.observableArrayList("Extreme", "High", "Medium", "Low"));
         categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal", "Family", "Other"));
 
+        // Set up ComboBox selection listeners
+        priorityComboBox.setOnAction(event -> {
+            String selectedPriority = priorityComboBox.getValue();
+            if (selectedPriority != null) {
+                // Keep the current category selection
+                String currentCategory = categoryComboBox.getValue();
+                categoryComboBox.setValue(currentCategory);
+            }
+        });
+
+        categoryComboBox.setOnAction(event -> {
+            String selectedCategory = categoryComboBox.getValue();
+            if (selectedCategory != null) {
+                // Keep the current priority selection
+                String currentPriority = priorityComboBox.getValue();
+                priorityComboBox.setValue(currentPriority);
+            }
+        });
+
+        // Initialize time spinners
         SpinnerValueFactory<Integer> hourFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12, 12);
         hourSpinner.setValueFactory(hourFactory);
         hourSpinner.setEditable(true);
@@ -114,10 +127,43 @@ public class AddTaskController {
             minuteSpinner.getEditor().setText(String.format("%02d", newValue));
         });
 
+        // Initialize AM/PM ComboBox
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
 
+        // Set initial button text
         submitTaskButton.setText("Add Task");
+
+        // Add validation listeners
+        addValidationListeners();
+    }
+
+    private void addValidationListeners() {
+        // Add listeners to update button state based on required fields
+        taskInput.textProperty().addListener((obs, oldVal, newVal) -> validateFields());
+        dueDatePicker.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
+        priorityComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
+        categoryComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields());
+    }
+
+    private void validateFields() {
+        boolean isValid = !taskInput.getText().trim().isEmpty() &&
+                         dueDatePicker.getValue() != null &&
+                         priorityComboBox.getValue() != null &&
+                         categoryComboBox.getValue() != null;
+        
+        submitTaskButton.setDisable(!isValid);
+    }
+
+    private void clearFields() {
+        taskInput.clear();
+        dueDatePicker.setValue(null);
+        hourSpinner.getValueFactory().setValue(12);
+        minuteSpinner.getValueFactory().setValue(0);
+        amPmComboBox.setValue("AM");
+        priorityComboBox.setValue(null);
+        categoryComboBox.setValue(null);
+        reminderDatePicker.setValue(null);
     }
 
     @FXML

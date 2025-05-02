@@ -1,15 +1,20 @@
 package edu.farmingdale.taskmanagerapp;
 
+import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import jfxtras.scene.control.agenda.Agenda;
 import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
@@ -17,14 +22,17 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
-import javafx.application.Platform;
+import java.util.List;
+import java.util.ArrayList;
+import javafx.scene.image.ImageView;
 
 /**
  * Controller for managing tasks. It handles adding, editing,
  * marking tasks complete, and deleting tasks.
  */
-public class TaskManagerController {
+public class TaskManagerController extends Application {
 
     @FXML
     private Button notificationBtn;
@@ -58,10 +66,13 @@ public class TaskManagerController {
     private Button deleteBtn;
     @FXML
     private Label welcomeLabel;
+    @FXML
+    private ImageView profilePicture;
 
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
     private DatabaseManager dbManager;
+    private ProfileManager profileManager;
 
     /**
      * Setter for DatabaseManager instance.
@@ -80,6 +91,13 @@ public class TaskManagerController {
      */
     @FXML
     public void initialize() {
+        // Initialize profile manager
+        profileManager = new ProfileManager(this);
+        if (profilePicture != null) {
+            profileManager.initialize(profilePicture);
+        } else {
+            System.err.println("Profile picture ImageView not found in FXML!");
+        }
 
         // Set up the TableView columns with property mappings
         taskColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
@@ -90,6 +108,9 @@ public class TaskManagerController {
 
         // Bind the observable list of tasks to the TableView
         taskTable.setItems(tasks);
+
+        // Initialize the notification service
+        NotificationService.startNotificationService(this);
 
         // --- Create and add the Agenda control programmatically, now named "agenda" ---
         agenda = new Agenda();
@@ -110,7 +131,9 @@ public class TaskManagerController {
         }
 
         if (notificationBtn != null) {
-            notificationBtn.setOnAction(event -> System.out.println("Notification Button Clicked"));
+            notificationBtn.setOnAction(event -> showNotificationSettings());
+        } else {
+            System.err.println("'notificationBtn' is EMPTY");
         }
 
         if (calendarView != null) {
@@ -154,39 +177,40 @@ public class TaskManagerController {
      * Refreshes the Agenda control with appointments based on the tasks list.
      */
     private void refreshAgendaAppointments() {
-        // Clear any existing appointments
         if (agenda == null) {
             System.err.println("Agenda Control Null - Cannot Refresh");
             return;
         }
 
         agenda.appointments().clear();
-        // Create an appointment for each task
+        
         for (Task task : tasks) {
             if (!"Completed".equalsIgnoreCase(task.getStatus())) {
                 try {
-                    if (task.getDueDate() == null || task.getDueTime() == null) {
-                        LocalDateTime start = LocalDateTime.of(task.getDueDate(), task.getDueTime());
+                    if (task.getDueDate() != null) {
+                        LocalDateTime start = LocalDateTime.of(
+                            task.getDueDate(),
+                            task.getDueTime() != null ? task.getDueTime() : LocalTime.of(9, 0)
+                        );
                         LocalDateTime end = start.plusHours(1);
+                        
                         AppointmentImplLocal appointment = new AppointmentImplLocal()
-                                .withStartLocalDateTime(start)
-                                .withEndLocalDateTime(end)
-                                .withSummary(task.getDescription())
-                                .withDescription("Priority: " + task.getPriority());
+                            .withStartLocalDateTime(start)
+                            .withEndLocalDateTime(end)
+                            .withSummary(task.getDescription())
+                            .withDescription("Priority: " + task.getPriority())
+                            .withAppointmentGroup(getAppointmentGroupForPriority(task.getPriority()));
+                            
                         agenda.appointments().add(appointment);
-                    } else {
-                        System.err.println("Skipped Appointment For Task With NULL Data/Time");
                     }
-                } catch (NullPointerException e) {
-                    System.err.println("Skipped Appointment For Task With EMPTY Data/Time: " + task.getDescription());
+                } catch (Exception e) {
+                    System.err.println("Error creating appointment for task: " + task.getDescription() + " - " + e.getMessage());
                 }
             }
+        }
 
-            if (agenda.getSkin() != null) {
-                agenda.refresh();
-            } else {
-                System.err.println("Agenda Skin STILL NULL - Cannot Refresh");
-            }
+        if (agenda.getSkin() != null) {
+            agenda.refresh();
         }
     }
 
@@ -228,24 +252,29 @@ public class TaskManagerController {
     @FXML
     private void markTaskComplete() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
-        if (selectedTask != null) {
-            if (!"Completed".equalsIgnoreCase(selectedTask.getStatus())) {
-                selectedTask.setStatus("Completed");
-                if (dbManager != null) {
-                    dbManager.updateTask(selectedTask);
-                    taskTable.refresh();
-                    refreshAgendaAppointments();
-                } else {
-                    System.err.println("Database Manager EMPTY - Added to UI But NOT SAVED In Database");
-                    showAlert("Task Added To List But NOT SAVED to Database");
-                }
-                taskTable.refresh(); // Refresh table to show status change
-                refreshAgendaAppointments(); // Remove completed task from agenda
+        if (selectedTask == null) {
+            showAlert("Please select a task to mark as complete.");
+            return;
+        }
+
+        if ("Completed".equalsIgnoreCase(selectedTask.getStatus())) {
+            showAlert("This task is already marked as complete.");
+            return;
+        }
+
+        try {
+            selectedTask.setStatus("Completed");
+            if (dbManager != null) {
+                dbManager.updateTask(selectedTask);
+                taskTable.refresh();
+                refreshAgendaAppointments();
             } else {
-                showAlert("Task Already Marked Complete");
+                throw new IllegalStateException("Database connection not available");
             }
-        } else {
-            showAlert("Please Select A Task");
+        } catch (Exception e) {
+            showAlert("Error updating task status: " + e.getMessage());
+            selectedTask.setStatus("Pending"); // Revert the status change
+            taskTable.refresh();
         }
     }
 
@@ -256,41 +285,32 @@ public class TaskManagerController {
     @FXML
     private void deleteTask() {
         Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
-        if (selectedTask != null) {
-            // Confirmation dialog
-            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmation.setTitle("Confirm Deletion");
-            confirmation.setHeaderText("Delete Task: " + selectedTask.getDescription());
-            confirmation.setContentText("Are you sure you want to permanently delete this task?");
+        if (selectedTask == null) {
+            showAlert("Please select a task to delete.");
+            return;
+        }
 
-            confirmation.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    boolean deletedFromDb = false;
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Confirm Deletion");
+        confirmDialog.setHeaderText("Delete Task");
+        confirmDialog.setContentText("Are you sure you want to delete this task?");
+
+        confirmDialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
                     if (dbManager != null) {
-                        try {
-                            dbManager.deleteTask(selectedTask.getTaskID());
-                            deletedFromDb = true;
-                            System.out.println("Task '" + selectedTask.getDescription() + "' deleted from DB.");
-                        } catch (Exception e) {
-                            System.err.println("Error deleting task from Database: " + e.getMessage());
-                            showAlert("Error deleting task from database. Please try again.");
-                        }
-                    } else {
-                        System.err.println("Database Manager is NULL - Cannot delete task from Database");
-                        showAlert("Could not connect to the database to delete the task.");
-                    }
-
-                    if (deletedFromDb || dbManager == null) {
+                        dbManager.deleteTask(selectedTask.getTaskID());
                         tasks.remove(selectedTask);
                         taskTable.refresh();
                         refreshAgendaAppointments();
-                        System.out.println("Task '" + selectedTask.getDescription() + "' removed from UI.");
+                    } else {
+                        throw new IllegalStateException("Database connection not available");
                     }
+                } catch (Exception e) {
+                    showAlert("Error deleting task: " + e.getMessage());
                 }
-            });
-        } else {
-            showAlert("Please select a task to delete.");
-        }
+            }
+        });
     }
 
     /**
@@ -299,11 +319,14 @@ public class TaskManagerController {
      * @param message the message to display in the alert
      */
     public void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Information");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Task Manager");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+            alert.showAndWait();
+        });
     }
 
     /**
@@ -398,27 +421,27 @@ public class TaskManagerController {
 
 
     public void addNewTaskFromDialog(Task newTask) {
-        if (newTask != null) {
+        if (newTask == null) {
+            showAlert("Invalid task data.");
+            return;
+        }
+
+        if (!newTask.isValidDueDate()) {
+            showAlert("Due date must be in the future.");
+            return;
+        }
+
+        try {
             if (dbManager != null) {
-                try {
-                    dbManager.addTask(newTask); // Save to DB first
-                    tasks.add(newTask); // Add to UI list only after successful DB save
-                    taskTable.refresh();
-                    refreshAgendaAppointments();
-                    System.out.println("Task Added & Saved: " + newTask.getDescription());
-                } catch (Exception e) {
-                    System.err.println("Error Saving New Task From Dialog To Database: " + e.getMessage());
-                    showAlert("Error Saving New Task");
-                }
-            } else {
+                dbManager.addTask(newTask);
                 tasks.add(newTask);
                 taskTable.refresh();
                 refreshAgendaAppointments();
-                System.err.println("Database Manager NULL - Task added to UI but NOT SAVED in Database");
-                showAlert("Task Added To List - CANNOT SAVE TO DATABASE - Please Check Connection.");
+            } else {
+                throw new IllegalStateException("Database connection not available");
             }
-        } else {
-            System.err.println("Attempted To Add A NULL (EMPTY) Task");
+        } catch (Exception e) {
+            showAlert("Error adding task: " + e.getMessage());
         }
     }
 
@@ -627,5 +650,257 @@ public class TaskManagerController {
 
         taskTable.refresh();
         refreshAgendaAppointments();
+    }
+
+    /**
+     * Returns the list of tasks for the notification service
+     */
+    public ObservableList<Task> getTasks() {
+        return tasks;
+    }
+
+    /**
+     * Shows the notification settings dialog
+     */
+    private void showNotificationSettings() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Task Notifications");
+        dialog.setHeaderText(null);
+
+        // Create a custom dialog pane
+        DialogPane dialogPane = dialog.getDialogPane();
+        VBox content = new VBox(15);
+        content.setStyle("-fx-padding: 20;");
+
+        // Header section
+        Label headerLabel = new Label("Upcoming Tasks");
+        headerLabel.setStyle(
+            "-fx-font-size: 24px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #2c3e50;"
+        );
+
+        // Settings info
+        Label settingsLabel = new Label(
+            "• Notifications are enabled for tasks due within 24 hours\n" +
+            "• Only incomplete tasks will trigger notifications\n" +
+            "• Notifications will appear in the bottom-right corner"
+        );
+        settingsLabel.setStyle(
+            "-fx-font-size: 14px;" +
+            "-fx-text-fill: #34495e;"
+        );
+
+        // Create a separator
+        Separator separator = new Separator();
+        separator.setStyle("-fx-background-color: #bdc3c7;");
+
+        // Tasks list section
+        Label upcomingTasksLabel = new Label("Tasks Due Soon:");
+        upcomingTasksLabel.setStyle(
+            "-fx-font-size: 18px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #2c3e50;"
+        );
+
+        VBox tasksContainer = new VBox(10);
+        boolean hasUpcomingTasks = false;
+
+        // Sort tasks by due date/time
+        List<Task> sortedTasks = new ArrayList<>(tasks);
+        sortedTasks.sort((t1, t2) -> {
+            LocalDateTime dt1 = LocalDateTime.of(t1.getDueDate(), t1.getDueTime() != null ? t1.getDueTime() : LocalTime.of(9, 0));
+            LocalDateTime dt2 = LocalDateTime.of(t2.getDueDate(), t2.getDueTime() != null ? t2.getDueTime() : LocalTime.of(9, 0));
+            return dt1.compareTo(dt2);
+        });
+
+        for (Task task : sortedTasks) {
+            if (task.getStatus().equals("Completed")) {
+                continue;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime dueDateTime = LocalDateTime.of(task.getDueDate(),
+                task.getDueTime() != null ? task.getDueTime() : LocalTime.of(9, 0));
+            
+            long hoursUntilDue = ChronoUnit.HOURS.between(now, dueDateTime);
+            
+            if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
+                hasUpcomingTasks = true;
+                
+                // Create task card
+                VBox taskCard = new VBox(5);
+                taskCard.setStyle(
+                    "-fx-background-color: white;" +
+                    "-fx-padding: 10;" +
+                    "-fx-background-radius: 5;" +
+                    "-fx-border-radius: 5;" +
+                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);"
+                );
+
+                // Task description with priority indicator
+                HBox taskHeader = new HBox(10);
+                Circle priorityIndicator = new Circle(6);
+                priorityIndicator.setStyle(getPriorityColor(task.getPriority()));
+                
+                Label taskDesc = new Label(task.getDescription());
+                taskDesc.setStyle(
+                    "-fx-font-weight: bold;" +
+                    "-fx-text-fill: #2c3e50;"
+                );
+                
+                taskHeader.getChildren().addAll(priorityIndicator, taskDesc);
+
+                // Due time and category
+                Label dueInfo = new Label(String.format("Due in %d hours • %s",
+                    hoursUntilDue, task.getCategory()));
+                dueInfo.setStyle("-fx-text-fill: #7f8c8d;");
+
+                taskCard.getChildren().addAll(taskHeader, dueInfo);
+                tasksContainer.getChildren().add(taskCard);
+            }
+        }
+
+        if (!hasUpcomingTasks) {
+            Label noTasksLabel = new Label("No tasks due in the next 24 hours");
+            noTasksLabel.setStyle(
+                "-fx-font-size: 14px;" +
+                "-fx-text-fill: #7f8c8d;" +
+                "-fx-font-style: italic;"
+            );
+            tasksContainer.getChildren().add(noTasksLabel);
+        }
+
+        // Add scroll capability for many tasks
+        ScrollPane scrollPane = new ScrollPane(tasksContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(200);
+        scrollPane.setStyle(
+            "-fx-background: transparent;" +
+            "-fx-background-color: transparent;"
+        );
+
+        // Add all components to the content
+        content.getChildren().addAll(
+            headerLabel,
+            settingsLabel,
+            separator,
+            upcomingTasksLabel,
+            scrollPane
+        );
+
+        // Style the dialog
+        dialogPane.setContent(content);
+        dialogPane.getStyleClass().add("notification-settings-dialog");
+        dialogPane.setStyle(
+            "-fx-background-color: #f5f6fa;" +
+            "-fx-padding: 20;"
+        );
+
+        // Add OK button
+        dialogPane.getButtonTypes().add(ButtonType.OK);
+        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        okButton.setStyle(
+            "-fx-background-color: #2c3e50;" +
+            "-fx-text-fill: white;" +
+            "-fx-padding: 8 20;" +
+            "-fx-background-radius: 5;"
+        );
+
+        dialog.showAndWait();
+    }
+
+    private String getPriorityColor(String priority) {
+        if (priority == null) return "-fx-fill: #95a5a6;"; // Default gray
+
+        return switch (priority.toLowerCase()) {
+            case "extreme" -> "-fx-fill: #e74c3c;"; // Red
+            case "high" -> "-fx-fill: #e67e22;";    // Orange
+            case "medium" -> "-fx-fill: #f1c40f;";  // Yellow
+            case "low" -> "-fx-fill: #2ecc71;";     // Green
+            default -> "-fx-fill: #95a5a6;";        // Gray
+        };
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        // This method is required by Application but not used in this controller
+    }
+
+    @Override
+    public void stop() {
+        NotificationService.stopNotificationService();
+    }
+
+    public void handleLogout() {
+        tasks.clear();
+        welcomeLabel.setText("Welcome!");
+        if (dbManager != null) {
+            dbManager.closeConnection();
+        }
+        showAlert("Successfully logged out!");
+    }
+
+    public void setCurrentUser(UserSession user) {
+        if (profileManager != null) {
+            profileManager.setCurrentUser(user);
+        }
+        if (user != null) {
+            welcomeLabel.setText("Welcome, " + user.getUserName() + "!");
+            loadTasksFromDb(); // Reload tasks for the new user
+        } else {
+            welcomeLabel.setText("Welcome!");
+            tasks.clear();
+        }
+    }
+
+    public DatabaseManager getDbManager() {
+        return dbManager;
+    }
+
+    public void showLoginScreen() {
+        try {
+            FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
+            Parent loginRoot = loginLoader.load();
+            
+            LoginController loginController = loginLoader.getController();
+            loginController.setMainController(this); // Changed to setMainController to match pattern from SignUpController
+            
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Login");
+            Scene loginScene = new Scene(loginRoot);
+            loginScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+            loginStage.setScene(loginScene);
+            loginStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            loginStage.initOwner(profilePicture.getScene().getWindow());
+            loginStage.showAndWait();
+        } catch (IOException e) {
+            System.err.println("Error Opening Login Window: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Cannot Open Login Window.");
+        }
+    }
+
+    public void showSignUpScreen() {
+        try {
+            FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
+            Parent signUpRoot = signUpLoader.load();
+            
+            SignUpController signUpController = signUpLoader.getController();
+            signUpController.setMainController(this);
+            
+            Stage signUpStage = new Stage();
+            signUpStage.setTitle("Sign Up");
+            Scene signUpScene = new Scene(signUpRoot);
+            signUpScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+            signUpStage.setScene(signUpScene);
+            signUpStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            signUpStage.initOwner(profilePicture.getScene().getWindow());
+            signUpStage.showAndWait();
+        } catch (IOException e) {
+            System.err.println("Error Opening Sign Up Window" + e.getMessage());
+            e.printStackTrace();
+            showAlert("Cannot Open Sign Up Window");
+        }
     }
 }

@@ -4,20 +4,77 @@ import javafx.collections.ObservableList;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DatabaseManager {
+    private static final Logger LOGGER = Logger.getLogger(DatabaseManager.class.getName());
     private static final String DB_URL = "jdbc:mysql://taskmanagerdbserver.mysql.database.azure.com:3306/TaskManagerDB";
     private static final String USER = "adminuser";
     private static final String PASS = "philippejean1234$";
+    private static final int MAX_RETRIES = 3;
+    private static final int RETRY_DELAY_MS = 1000;
 
     private Connection conn;
 
     public DatabaseManager() {
+        initializeConnection();
+    }
+
+    public void initializeConnection() {
+        int retries = 0;
+        while (retries < MAX_RETRIES) {
+            try {
+                Properties props = new Properties();
+                props.setProperty("user", USER);
+                props.setProperty("password", PASS);
+                props.setProperty("useSSL", "true");
+                props.setProperty("autoReconnect", "true");
+                props.setProperty("maxReconnects", "3");
+                
+                conn = DriverManager.getConnection(DB_URL, props);
+                
+                // Check if ProfilePicturePath column exists and add it if it doesn't
+                try (Statement stmt = conn.createStatement()) {
+                    // Check if column exists
+                    ResultSet rs = conn.getMetaData().getColumns(null, null, "users", "ProfilePicturePath");
+                    if (!rs.next()) {
+                        // Column doesn't exist, so add it
+                        stmt.execute("ALTER TABLE users ADD COLUMN ProfilePicturePath VARCHAR(255)");
+                        stmt.execute("UPDATE users SET ProfilePicturePath = '/edu/farmingdale/taskmanagerapp/images/profilePicture.png'");
+                        LOGGER.log(Level.INFO, "Added ProfilePicturePath column to users table");
+                    }
+                } catch (SQLException e) {
+                    LOGGER.log(Level.WARNING, "Error checking/adding ProfilePicturePath column: " + e.getMessage());
+                }
+                
+                return;
+            } catch (SQLException e) {
+                retries++;
+                LOGGER.log(Level.SEVERE, "Error connecting to database (attempt " + retries + "): " + e.getMessage());
+                if (retries == MAX_RETRIES) {
+                    throw new RuntimeException("Failed to connect to database after " + MAX_RETRIES + " attempts", e);
+                }
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Connection interrupted", ie);
+                }
+            }
+        }
+    }
+
+    private Connection getConnection() {
         try {
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            if (conn == null || conn.isClosed()) {
+                initializeConnection();
+            }
+            return conn;
         } catch (SQLException e) {
-            System.out.println("Error connecting to database: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting database connection: " + e.getMessage());
+            throw new RuntimeException("Database connection error", e);
         }
     }
 
@@ -45,43 +102,57 @@ public class DatabaseManager {
         }
     }
 
-    public void registerUser(UserSession s){
-        try {
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
-            Statement statement = conn.createStatement();
-            String sql = "INSERT INTO users (UserName, PassWord, Email) VALUES (?, ?, ?)";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.setString(1, s.getUserName());
-            preparedStatement.setString(2, s.getPassword());
-            preparedStatement.setString(3, s.getEmail());
+    public void registerUser(UserSession s) {
+        if (s == null || s.getUserName() == null || s.getPassword() == null || s.getEmail() == null) {
+            throw new IllegalArgumentException("Invalid user session data");
+        }
 
-            int row = preparedStatement.executeUpdate();
-            statement.close();
-            conn.close();
-
-        } catch (Exception e){
-
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                 "INSERT INTO users (UserName, PassWord, Email, ProfilePicturePath) VALUES (?, ?, ?, ?)")) {
+            
+            stmt.setString(1, s.getUserName());
+            stmt.setString(2, s.getPassword());
+            stmt.setString(3, s.getEmail());
+            stmt.setString(4, "/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
+            
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 0) {
+                throw new SQLException("Creating user failed, no rows affected.");
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error registering user: " + e.getMessage());
+            throw new RuntimeException("Failed to register user", e);
         }
     }
 
-    public UserSession getAccount(String username) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
-            stmt.setString(1, username);
+    public UserSession getAccount(String email) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
+            stmt.setString(1, email);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"));
+                    UserSession s = new UserSession(
+                        rs.getString("UserName"),
+                        rs.getString("Email"),
+                        rs.getString("PassWord")
+                    );
+                    s.setUserID(rs.getInt("UserID"));
+                    try {
+                        s.setProfilePicturePath(rs.getString("ProfilePicturePath"));
+                    } catch (SQLException e) {
+                        // If column doesn't exist, set default profile picture
+                        s.setProfilePicturePath("/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
+                    }
                     return s;
                 } else {
                     return null;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
-        }catch (SQLException e){
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
     }
+
     public void addTask(Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Tasks (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             stmt.setString(1, task.getDescription());
@@ -105,7 +176,6 @@ public class DatabaseManager {
         }
     }
 
-
     public void deleteTask(int taskID) {
         try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM Tasks WHERE TaskID = ?")) {
             stmt.setInt(1, taskID);
@@ -114,6 +184,7 @@ public class DatabaseManager {
             System.out.println("Error deleting task from database: " + e.getMessage());
         }
     }
+
     public void updateTask(Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ? WHERE TaskID = ?")) {
             stmt.setString(1, task.getDescription());
@@ -128,6 +199,7 @@ public class DatabaseManager {
             System.out.println("Error updating task in database: " + e.getMessage());
         }
     }
+
     public void markTaskComplete(int taskID) {
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Status = 'Completed' WHERE TaskID = ?")) {
             stmt.setInt(1, taskID);
@@ -200,9 +272,6 @@ public class DatabaseManager {
         }
     }
 
-
-
-
     // Helper methods to get names for priority and category
     private String getPriorityName(int priorityID) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT PriorityLevel FROM Priorities WHERE PriorityID = ?")) {
@@ -232,13 +301,39 @@ public class DatabaseManager {
         return ""; // Return empty string if not found
     }
 
+    public void updateProfilePicture(String userName, String profilePicturePath) {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "UPDATE users SET ProfilePicturePath = ? WHERE UserName = ?")) {
+            stmt.setString(1, profilePicturePath);
+            stmt.setString(2, userName);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating profile picture: " + e.getMessage());
+            throw new RuntimeException("Failed to update profile picture", e);
+        }
+    }
+
+    public void updateUserProfilePicture(UserSession user) {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "UPDATE users SET ProfilePicturePath = ? WHERE UserID = ?")) {
+            stmt.setString(1, user.getProfilePicturePath());
+            stmt.setInt(2, user.getUserID());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error updating profile picture: " + e.getMessage());
+            throw new RuntimeException("Failed to update profile picture in database", e);
+        }
+    }
+
     // Close the connection when done
     public void closeConnection() {
         if (conn != null) {
             try {
                 conn.close();
             } catch (SQLException e) {
-                System.out.println("Error closing database connection: " + e.getMessage());
+                LOGGER.log(Level.SEVERE, "Error closing database connection: " + e.getMessage());
+            } finally {
+                conn = null;
             }
         }
     }

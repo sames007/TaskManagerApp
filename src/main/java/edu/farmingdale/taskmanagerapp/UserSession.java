@@ -6,31 +6,62 @@ public class UserSession {
     private String userName;
     private String email;
     private String password;
+    private String profilePicturePath;
 
-    public UserSession(String userName, String email, String password){
-        this.userID = userID;
+    public UserSession(String userName, String email, String password) {
         this.userName = userName;
         this.email = email;
         this.password = password;
+        this.userID = 0;
+        this.profilePicturePath = null;
     }
 
-    public String getUserName(){return this.userName;}
-    public void setUserName(String s){this.userName = s;}
+    public String getUserName() {
+        return userName;
+    }
 
-    public String getPassword(){return this.password;}
-    public void setPassword(String s){this.password = s;}
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
 
-    public String getEmail(){return this.email;}
-    public void setEmail(String s){this.email = s;}
+    public String getPassword() {
+        return password;
+    }
 
-    public int getUserID(){return this.userID;}
-    public void setUserID(int i){this.userID = i;}
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-    public void cleanUserSession(){
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public int getUserID() {
+        return userID;
+    }
+
+    public void setUserID(int userID) {
+        this.userID = userID;
+    }
+
+    public String getProfilePicturePath() {
+        return profilePicturePath;
+    }
+
+    public void setProfilePicturePath(String profilePicturePath) {
+        this.profilePicturePath = profilePicturePath;
+    }
+
+    public void cleanUserSession() {
         this.userID = 0;
         this.userName = "";
         this.password = "";
         this.email = "";
+        this.profilePicturePath = null;
         }
     }
 

@@ -172,3 +172,32 @@
     -fx-border-color: #1E88E5;
     -fx-border-width: 2px;
 }
+
+.profile-picture {
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 1);
+    -fx-background-radius: 24;
+}
+
+.profile-picture:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+/* Authentication Fields */
+.auth-field {
+    -fx-background-color: white;
+    -fx-background-radius: 4;
+    -fx-border-color: #1E88E5;
+    -fx-border-radius: 4;
+    -fx-border-width: 1;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+}
+
+.auth-field:focused {
+    -fx-border-color: #1565C0;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(21, 101, 192, 0.1), 8, 0, 0, 0);
+}

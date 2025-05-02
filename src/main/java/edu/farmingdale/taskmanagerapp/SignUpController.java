@@ -1,47 +1,60 @@
 package edu.farmingdale.taskmanagerapp;
 
-import com.mysql.cj.conf.BooleanProperty;
-import javafx.beans.binding.Bindings;
-import javafx.beans.binding.BooleanBinding;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import javafx.stage.Stage;
 
 public class SignUpController {
     @FXML
     private TextField usernameField, emailField, passwordField;
     @FXML
-    Button createButton;
-    private DatabaseManager dm;
+    private Button createButton, backButton;
+    
+    private TaskManagerController mainController;
 
     public void initialize() {
-
     }
+
+    public void setMainController(TaskManagerController controller) {
+        this.mainController = controller;
+    }
+
     @FXML
     public void createNewAccount(ActionEvent actionEvent) {
-        dm = new DatabaseManager();
-        String priv = "NONE";
+        try {
         String username = usernameField.getText();
+            String email = emailField.getText();
         String password = passwordField.getText();
-        UserSession s = new UserSession(usernameField.getText(), emailField.getText(), passwordField.getText());
 
-        try{
-            UserSession existingUser = dm.getAccount(s.getUserName());
-            if(existingUser==null) {
-                dm.registerUser(s);
-                System.out.println("Account created!");
-            }else{
-                System.out.println("Username is taken! Please choose another");
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                mainController.showAlert("Please fill in all fields");
+                return;
+            }
+
+            UserSession newUser = new UserSession(username, email, password);
+            UserSession existingUser = mainController.getDbManager().getAccount(newUser.getEmail());
+
+            if (existingUser == null) {
+                mainController.getDbManager().registerUser(newUser);
+                mainController.showAlert("Account created successfully!");
+                mainController.setCurrentUser(newUser);
+                Stage window = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
+                window.close();
+            } else {
+                mainController.showAlert("Email is already registered. Please use a different email.");
             }
         } catch (Exception e) {
-            System.out.println("Unable to create account");
-            e.printStackTrace();
+            mainController.showAlert("Error creating account: " + e.getMessage());
+        }
         }
 
+    @FXML
+    public void handleBack() {
+        Stage stage = (Stage) backButton.getScene().getWindow();
+        stage.close();
     }
 }
 

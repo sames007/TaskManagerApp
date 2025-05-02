@@ -80,15 +80,30 @@ public class Task {
      * @return true if the date and time are past the
      * due date and time, otherwise false
       */
-    public boolean isOverdue(){
+    public boolean isOverdue() {
     LocalDate today = LocalDate.now();
     LocalTime now = LocalTime.now();
 
+        if (dueDate == null) {
+            return false;
+        }
+
     if (dueDate.isBefore(today)) {
         return true; // Past due date
-    } else if (dueDate.isEqual(today) && dueTime.isBefore(now)){
+        } else if (dueDate.isEqual(today) && dueTime != null && dueTime.isBefore(now)) {
         return true; // Due today but time's already passed
     }
     return false; // Not overdue
+    }
+
+    /**
+     * Validates if the due date is in the future
+     * @return true if the date is valid (in the future), false otherwise
+     */
+    public boolean isValidDueDate() {
+        if (dueDate == null) {
+            return false;
+        }
+        return !dueDate.isBefore(LocalDate.now());
     }
 }

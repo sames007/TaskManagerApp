@@ -1,6 +1,5 @@
 package edu.farmingdale.taskmanagerapp;
 
-
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -19,53 +18,41 @@ public class LoginController {
     @FXML
     private Button loginButton, backButton;
 
+    private TaskManagerController mainController;
 
     @FXML
     public void initialize() {
+    }
 
+    public void setMainController(TaskManagerController controller) {
+        this.mainController = controller;
     }
 
     @FXML
     public void login(ActionEvent actionEvent) {
         try {
-            DatabaseManager dm = new DatabaseManager();
             String email = emailTextField.getText();
             String password = passwordTextField.getText();
 
-
             UserSession user = new UserSession("", email, password);
-            UserSession s = dm.getAccount(user.getEmail());
-            if (s.getUserName().isEmpty() || !s.getPassword().equals(password)) {
-                System.out.println("Login failed, please enter a valid email/password");
+            UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
+            
+            if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() || 
+                !authenticatedUser.getPassword().equals(password)) {
+                mainController.showAlert("Login failed, please enter a valid email/password");
             } else {
-                // Load the main FXML layout
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
-
-                // Create a DatabaseManager instance
-                DatabaseManager dbManager = new DatabaseManager();
-
-                // Load the FXML file
-                Parent root = loader.load();
-
-                // Get the TaskManagerController instance and inject the DatabaseManager
-                TaskManagerController taskManagerController = loader.getController();
-                taskManagerController.setDatabaseManager(dbManager);
-
-                // Create a new scene with specified width and height
-                Scene scene = new Scene(root, 800, 600);
-
-                // Apply external CSS files for styling the UI and chat window
-                scene.getStylesheets().add(getClass().getResource("styling/styles.css").toExternalForm());
-                scene.getStylesheets().add(getClass().getResource("styling/ChatBox.css").toExternalForm());
-
-                // Get the current stage (login window) and close it
+                mainController.setCurrentUser(authenticatedUser);
                 Stage window = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
-                window.close();  // Close the login window
+                window.close();
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            mainController.showAlert("Error during login: " + e.getMessage());
+        }
         }
 
-
+    @FXML
+    public void handleBack() {
+        Stage stage = (Stage) backButton.getScene().getWindow();
+        stage.close();
     }
 }
