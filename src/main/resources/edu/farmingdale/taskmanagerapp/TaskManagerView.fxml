@@ -47,7 +47,7 @@
                             </ImageView>
                         </graphic>
                     </Button>
-                    <Circle fill="#f75c5c" radius="8.0" stroke="TRANSPARENT" strokeType="INSIDE" StackPane.alignment="TOP_RIGHT">
+                    <Circle fx:id="notificationIndicator" fill="#f75c5c" radius="8.0" stroke="TRANSPARENT" strokeType="INSIDE" visible="false" managed="false" StackPane.alignment="TOP_RIGHT">
                         <StackPane.margin>
                             <Insets right="2.0" top="11.0" />
                         </StackPane.margin>
