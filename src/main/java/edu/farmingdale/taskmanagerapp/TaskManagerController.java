@@ -2,11 +2,14 @@ package edu.farmingdale.taskmanagerapp;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -34,45 +37,31 @@ import javafx.scene.image.ImageView;
  */
 public class TaskManagerController extends Application {
 
-    @FXML
-    private Button notificationBtn;
-    @FXML
-    private TableView<Task> taskTable;
-    @FXML
-    private TableColumn<Task, String> taskColumn;
-    @FXML
-    private TableColumn<Task, LocalDate> dueDateColumn;
-    @FXML
-    private TableColumn<Task, LocalTime> timeColumn;
-    @FXML
-    private TableColumn<Task, String> priorityColumn;
-    @FXML
-    private TableColumn<Task, String> statusColumn;
-    @FXML
-    private VBox agendaVbox; // Renamed from agendaContainer
-    @FXML
-    private Label agendaLabel;
-    @FXML
-    private ListView<String> agendaList;
-    @FXML
-    private DatePicker calendarView; // Renamed from calenderView
-    @FXML
-    private VBox previewPane;
-    @FXML
-    private Button addTaskButton;
-    @FXML
-    private Button markCompleteBtn;
-    @FXML
-    private Button deleteBtn;
-    @FXML
-    private Label welcomeLabel;
-    @FXML
-    private ImageView profilePicture;
+    @FXML private Button notificationBtn;
+    @FXML private TableView<Task> taskTable;
+    @FXML private TableColumn<Task, String> taskColumn;
+    @FXML private TableColumn<Task, LocalDate> dueDateColumn;
+    @FXML private TableColumn<Task, LocalTime> timeColumn;
+    @FXML private TableColumn<Task, String> priorityColumn;
+    @FXML private TableColumn<Task, String> statusColumn;
+    @FXML private VBox agendaVbox; // Renamed from agendaContainer
+    @FXML private Label agendaLabel;
+    @FXML private ListView<String> agendaList;
+    @FXML private DatePicker calendarView; // Renamed from calenderView
+    @FXML private VBox previewPane;
+    @FXML private Button addTaskButton;
+    @FXML private Button markCompleteBtn;
+    @FXML private Button deleteBtn;
+    @FXML private Label welcomeLabel;
+    @FXML private ImageView profilePicture;
+    @FXML private Circle notificationIndicator;
+
 
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
     private DatabaseManager dbManager;
     private ProfileManager profileManager;
+    private final BooleanProperty hasPendingNotification = new SimpleBooleanProperty(false);
 
     /**
      * Setter for DatabaseManager instance.
@@ -82,6 +71,8 @@ public class TaskManagerController extends Application {
     public void setDatabaseManager(DatabaseManager dbManager) {
         this.dbManager = dbManager;
         loadTasksFromDb();
+
+        NotificationService.startNotificationService(this);
     }
 
     public TaskManagerController() {}
@@ -110,7 +101,8 @@ public class TaskManagerController extends Application {
         taskTable.setItems(tasks);
 
         // Initialize the notification service
-        NotificationService.startNotificationService(this);
+        notificationIndicator.visibleProperty().bind(hasPendingNotification);
+        notificationIndicator.managedProperty().bind(hasPendingNotification);
 
         // --- Create and add the Agenda control programmatically, now named "agenda" ---
         agenda = new Agenda();
@@ -159,6 +151,19 @@ public class TaskManagerController extends Application {
         }
 
         Platform.runLater(this::refreshAgendaAppointments);
+
+        // Start the periodic service
+        NotificationService.startNotificationService(this);
+
+        // ALSO re‐run the indicator logic if tasks list changes
+        tasks.addListener((ListChangeListener<Task>) change -> {
+            NotificationService.checkDueTasks(this);
+        });
+
+        hasPendingNotification.bind(Bindings.createBooleanBinding(
+                () -> tasks.stream().anyMatch(NotificationService::shouldNotifyTask),
+                tasks   // re‐compute whenever `tasks` changes
+        ));
     }
 
     private void loadTasksFromDb() {
@@ -808,6 +813,11 @@ public class TaskManagerController extends Application {
         );
 
         dialog.showAndWait();
+    }
+
+    /** Called by NotificationService to show/hide the red dot */
+    public void setPendingNotification(boolean anyDueSoon) {
+        hasPendingNotification.set(anyDueSoon);
     }
 
     private String getPriorityColor(String priority) {

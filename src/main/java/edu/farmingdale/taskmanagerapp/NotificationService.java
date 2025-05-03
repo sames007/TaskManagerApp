@@ -37,7 +37,7 @@ public class NotificationService {
         notificationCheckTimeline.play();
     }
 
-    private static void checkDueTasks(TaskManagerController controller) {
+    public static void checkDueTasks(TaskManagerController controller) {
         Platform.runLater(() -> {
             for (Task task : controller.getTasks()) {
                 if (shouldNotifyTask(task)) {
@@ -47,7 +47,7 @@ public class NotificationService {
         });
     }
 
-    private static boolean shouldNotifyTask(Task task) {
+    public static boolean shouldNotifyTask(Task task) {
         if (task.getStatus().equals("Completed")) {
             return false;
         }
@@ -84,10 +84,10 @@ public class NotificationService {
                 "-fx-text-fill: #ecf0f1;"
             );
 
-            LocalDateTime dueDateTime = LocalDateTime.of(task.getDueDate(), 
+            LocalDateTime dueDateTime = LocalDateTime.of(task.getDueDate(),
                 task.getDueTime() != null ? task.getDueTime() : LocalTime.of(9, 0));
             long hoursUntilDue = ChronoUnit.HOURS.between(LocalDateTime.now(), dueDateTime);
-            
+
             Label timeLabel = new Label(String.format("Due in %d hours", hoursUntilDue));
             timeLabel.setStyle(
                 "-fx-font-size: 12px;" +
