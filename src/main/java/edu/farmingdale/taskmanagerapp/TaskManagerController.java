@@ -152,6 +152,29 @@ public class TaskManagerController extends Application {
 
         Platform.runLater(this::refreshAgendaAppointments);
 
+        // Add this at the end of initialize(), after taskTable.setItems(tasks);
+        taskTable.setRowFactory(tv -> {
+            TableRow<Task> row = new TableRow<>();
+            // Create the context menu and its “Edit” item
+            ContextMenu contextMenu = new ContextMenu();
+            MenuItem editItem = new MenuItem("Edit");
+            editItem.setOnAction(evt -> {
+                Task clickedTask = row.getItem();
+                if (clickedTask != null) {
+                    showTaskDialog(clickedTask);
+                }
+            });
+            contextMenu.getItems().add(editItem);
+
+            // Only show context menu on non-empty rows
+            row.contextMenuProperty().bind(
+                    Bindings.when(row.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(contextMenu)
+            );
+            return row;
+        });
+
         // Start the periodic service
         NotificationService.startNotificationService(this);
 
