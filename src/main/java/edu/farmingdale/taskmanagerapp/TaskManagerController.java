@@ -10,6 +10,7 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -56,12 +57,12 @@ public class TaskManagerController extends Application {
     @FXML private ImageView profilePicture;
     @FXML private Circle notificationIndicator;
 
-
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
     private DatabaseManager dbManager;
     private ProfileManager profileManager;
     private final BooleanProperty hasPendingNotification = new SimpleBooleanProperty(false);
+    private ContextMenu currentContextMenu = null;
 
     /**
      * Setter for DatabaseManager instance.
@@ -75,7 +76,11 @@ public class TaskManagerController extends Application {
         NotificationService.startNotificationService(this);
     }
 
+    /**
+     * Default constructor.
+     */
     public TaskManagerController() {}
+
     /**
      * Initializes the controller after the FXML file is loaded.
      * Sets up the ComboBoxes, TableView columns, Spinners, and agenda.
@@ -99,6 +104,108 @@ public class TaskManagerController extends Application {
 
         // Bind the observable list of tasks to the TableView
         taskTable.setItems(tasks);
+
+        // Handle mouse clicks on the task table:
+        // - Single left-click: Select task
+        // - Double left-click: Edit a task if clicked on a row with data, add a new task if clicked on an empty area
+        // - Right-click is handled separately by setOnContextMenuRequested
+        taskTable.setOnMouseClicked(event -> {
+            if (!event.getButton().equals(javafx.scene.input.MouseButton.PRIMARY)) {
+                return;
+            }
+            if (currentContextMenu != null) {
+                currentContextMenu.hide();
+            }
+            if (event.getClickCount() == 2) { // Check for double-click
+                Node target = event.getPickResult().getIntersectedNode();
+                TableRow<Task> row = null;
+                while (target != null && target != taskTable && !(target instanceof TableRow)) {
+                    target = target.getParent();
+                }
+
+                if (target instanceof TableRow) {
+                    row = (TableRow<Task>) target;
+                    // Check if the row contains data
+                    if (!row.isEmpty()) {
+                        Task clickedTask = row.getItem();
+                        if (clickedTask != null) {
+                            // Double-clicked ON a row with a task -> Edit that task
+                            showTaskDialog(clickedTask);
+                        } else {
+                            // Double-clicked on a row object that is somehow empty (unlikely) -> Add
+                            taskTable.getSelectionModel().clearSelection(); // Clear selection just in case
+                            showTaskDialog(null);
+                        }
+                    } else {
+                        // Double-clicked on an empty row representation (e.g., below the last item) -> Add
+                        taskTable.getSelectionModel().clearSelection(); // Clear selection just in case
+                        showTaskDialog(null);
+                    }
+                } else {
+                    // Clicked outside any row (e.g., header, empty table background) -> Add
+                    taskTable.getSelectionModel().clearSelection(); // Clear selection just in case
+                    showTaskDialog(null);
+                }
+                event.consume();
+            }
+        });
+
+        // Handle right-click on the task table
+        taskTable.setOnContextMenuRequested(event -> {
+            Node target = event.getPickResult().getIntersectedNode();
+            TableRow<Task> row = null;
+            while (target != null && target != taskTable && !(target instanceof TableRow)) {
+                target = target.getParent();
+            }
+
+            boolean clickedOnEmptySpace = true; // Assume empty space initially
+
+            // Check if the row contains data
+            if (target instanceof TableRow) {
+                row = (TableRow<Task>) target;
+                if (!row.isEmpty()) {
+                    // Clicked on a row with an actual task item
+                    clickedOnEmptySpace = false;
+                    if (currentContextMenu != null) {
+                        currentContextMenu.hide();
+                    }
+                    System.out.println("Right-clicked on task: " + row.getItem().getDescription()); // For debugging
+                }
+            }
+
+            // Handle a right-click context menu:
+            // - If clicked on empty space (no task row): Show "Add New Task" menu
+            // - Row context menus are handled separately via row factory
+            // - the Current context menu is tracked and hidden when appropriate
+            // - Auto-hide enabled to dismiss when clicking outside
+            if (clickedOnEmptySpace) {
+                if (currentContextMenu != null) {
+                    currentContextMenu.hide();
+                }
+                ContextMenu contextMenu = new ContextMenu();
+                MenuItem addItem = new MenuItem("Add New Task");
+
+                // Set the action for the menu item
+                addItem.setOnAction(actionEvent -> {
+                    // Clear selection just before showing the dialog
+                    taskTable.getSelectionModel().clearSelection();
+                    showTaskDialog(null); // Open the dialog to add a NEW task
+                });
+                contextMenu.getItems().add(addItem);
+                contextMenu.setAutoHide(true); // Important for hiding on clicks outside
+
+                // Store reference and set handler to clear it when hidden
+                currentContextMenu = contextMenu; // Store this specific menu instance
+                contextMenu.setOnHidden(e -> {
+                    // Only clear if the hidden menu is the one we stored
+                    if (currentContextMenu == contextMenu) {
+                        currentContextMenu = null;
+                    }
+                });
+                contextMenu.show(taskTable, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
+        });
 
         // Initialize the notification service
         notificationIndicator.visibleProperty().bind(hasPendingNotification);
@@ -155,7 +262,6 @@ public class TaskManagerController extends Application {
         // Add this at the end of initialize(), after taskTable.setItems(tasks);
         taskTable.setRowFactory(tv -> {
             TableRow<Task> row = new TableRow<>();
-            // Create the context menu and its “Edit” item
             ContextMenu contextMenu = new ContextMenu();
             MenuItem editItem = new MenuItem("Edit");
             editItem.setOnAction(evt -> {
@@ -166,7 +272,6 @@ public class TaskManagerController extends Application {
             });
             contextMenu.getItems().add(editItem);
 
-            // Only show context menu on non-empty rows
             row.contextMenuProperty().bind(
                     Bindings.when(row.emptyProperty())
                             .then((ContextMenu) null)
@@ -189,6 +294,11 @@ public class TaskManagerController extends Application {
         ));
     }
 
+    /**
+     * Loads tasks from the database into the application's task list and refreshes the UI components.
+     * If the database manager is available, existing tasks in the list are cleared and replaced
+     * by tasks retrieved from the database.
+     */
     private void loadTasksFromDb() {
         if (dbManager != null) {
             tasks.clear();
@@ -242,6 +352,10 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param priority the priority of the task
+     * @return Priority of task
+     */
     private Agenda.AppointmentGroup getAppointmentGroupForPriority(String priority) {
 
         Agenda.AppointmentGroup highPriorityGroup = new Agenda.AppointmentGroupImpl().withStyleClass("priority-high");
@@ -359,7 +473,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Helper method to convert 12-hour time (with AM/PM) into 24-hour format.
-     *
      * @param hour   the hour value (1-12)
      * @param minute the minute value (0-59)
      * @param amPm   "AM" or "PM"
@@ -447,7 +560,9 @@ public class TaskManagerController extends Application {
         }
     }
 
-
+    /**
+     * @param newTask the new task to add
+     */
     public void addNewTaskFromDialog(Task newTask) {
         if (newTask == null) {
             showAlert("Invalid task data.");
@@ -473,6 +588,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param updatedTask the task to update
+     */
     public void updateTaskFromDialog(Task updatedTask) {
         if (updatedTask == null) {
             System.err.println("updateTaskFromDialog Called With NULL Task");
@@ -499,6 +617,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Add Task dialog window.
+     */
     private void showEditTaskDialog() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("AddTaskDialog.fxml"));
@@ -558,6 +679,7 @@ public class TaskManagerController extends Application {
             System.err.println("'addNewTask' Called With EMPTY Task");
         }
     }
+
     /**
      * Adds an imported task (from a file) to the list and refreshes the table.
      *
@@ -611,6 +733,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Login window when the user clicks the "Login" button.
+     */
     @FXML
     private void displayLogin() {
         try {
@@ -632,6 +757,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Opens the Sign Up window when the user clicks the "Sign Up" button.
+     */
     @FXML
     private void displaySignUp() {
         try {
@@ -653,6 +781,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * @param taskToEdit the task to edit
+     */
     public void updateTaskFrom(Task taskToEdit) {
         if (taskToEdit == null) {
             System.err.println("updateTaskFrom called with a null task.");
@@ -723,7 +854,6 @@ public class TaskManagerController extends Application {
         Separator separator = new Separator();
         separator.setStyle("-fx-background-color: #bdc3c7;");
 
-        // Tasks list section
         Label upcomingTasksLabel = new Label("Tasks Due Soon:");
         upcomingTasksLabel.setStyle(
             "-fx-font-size: 18px;" +
@@ -756,7 +886,6 @@ public class TaskManagerController extends Application {
             if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
                 hasUpcomingTasks = true;
                 
-                // Create task card
                 VBox taskCard = new VBox(5);
                 taskCard.setStyle(
                     "-fx-background-color: white;" +
@@ -825,7 +954,7 @@ public class TaskManagerController extends Application {
             "-fx-padding: 20;"
         );
 
-        // Add OK button
+        // Add the OK button
         dialogPane.getButtonTypes().add(ButtonType.OK);
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         okButton.setStyle(
@@ -843,6 +972,10 @@ public class TaskManagerController extends Application {
         hasPendingNotification.set(anyDueSoon);
     }
 
+    /**
+     * @param priority the priority of the task
+     * @return Priority color string
+     */
     private String getPriorityColor(String priority) {
         if (priority == null) return "-fx-fill: #95a5a6;"; // Default gray
 
@@ -855,16 +988,25 @@ public class TaskManagerController extends Application {
         };
     }
 
+    /**
+     * Starts the notification service
+     */
     @Override
     public void start(Stage primaryStage) {
         // This method is required by Application but not used in this controller
     }
 
+    /**
+     * Starts the notification service
+     */
     @Override
     public void stop() {
         NotificationService.stopNotificationService();
     }
 
+    /**
+     * Called when the user clicks the "Logout" button.
+     */
     public void handleLogout() {
         tasks.clear();
         welcomeLabel.setText("Welcome!");
@@ -874,6 +1016,9 @@ public class TaskManagerController extends Application {
         showAlert("Successfully logged out!");
     }
 
+    /**
+     * @param user the user to set
+     */
     public void setCurrentUser(UserSession user) {
         if (profileManager != null) {
             profileManager.setCurrentUser(user);
@@ -891,6 +1036,9 @@ public class TaskManagerController extends Application {
         return dbManager;
     }
 
+    /**
+     * Shows the login screen
+     */
     public void showLoginScreen() {
         try {
             FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
@@ -914,6 +1062,9 @@ public class TaskManagerController extends Application {
         }
     }
 
+    /**
+     * Shows the sign-up screen
+     */
     public void showSignUpScreen() {
         try {
             FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
