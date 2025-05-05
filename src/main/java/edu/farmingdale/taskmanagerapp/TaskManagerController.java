@@ -56,6 +56,7 @@ public class TaskManagerController extends Application {
     @FXML private Label welcomeLabel;
     @FXML private ImageView profilePicture;
     @FXML private Circle notificationIndicator;
+    @FXML private ToggleButton themeToggleBtn;
 
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
@@ -63,6 +64,9 @@ public class TaskManagerController extends Application {
     private ProfileManager profileManager;
     private final BooleanProperty hasPendingNotification = new SimpleBooleanProperty(false);
     private ContextMenu currentContextMenu = null;
+    private static final String light_Theme = "styling/styles.css";
+    private static final String dark_Theme = "styling/darkTheme.css";
+    private boolean darkMode = false;
 
     /**
      * Setter for DatabaseManager instance.
@@ -292,6 +296,22 @@ public class TaskManagerController extends Application {
                 () -> tasks.stream().anyMatch(NotificationService::shouldNotifyTask),
                 tasks   // re‐compute whenever `tasks` changes
         ));
+
+        // Toggles the label of the themes based on user click
+        Platform.runLater(() -> {
+            if(themeToggleBtn != null) {
+                themeToggleBtn.setSelected(false);
+                themeToggleBtn.setText("Dark Mode");
+                themeToggleBtn.setOnAction(e -> {
+                    darkMode = themeToggleBtn.isSelected();
+                    themeToggleBtn.setText(darkMode ? "Light Mode" : "Dark Mode");
+                    Scene scene = themeToggleBtn.getScene();
+                    if(scene != null) {
+                        applyTheme(scene, darkMode);
+                    }
+                });
+            }
+        });
     }
 
     /**
@@ -321,7 +341,7 @@ public class TaskManagerController extends Application {
         }
 
         agenda.appointments().clear();
-        
+
         for (Task task : tasks) {
             if (!"Completed".equalsIgnoreCase(task.getStatus())) {
                 try {
@@ -331,14 +351,14 @@ public class TaskManagerController extends Application {
                             task.getDueTime() != null ? task.getDueTime() : LocalTime.of(9, 0)
                         );
                         LocalDateTime end = start.plusHours(1);
-                        
+
                         AppointmentImplLocal appointment = new AppointmentImplLocal()
                             .withStartLocalDateTime(start)
                             .withEndLocalDateTime(end)
                             .withSummary(task.getDescription())
                             .withDescription("Priority: " + task.getPriority())
                             .withAppointmentGroup(getAppointmentGroupForPriority(task.getPriority()));
-                            
+
                         agenda.appointments().add(appointment);
                     }
                 } catch (Exception e) {
@@ -880,12 +900,12 @@ public class TaskManagerController extends Application {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime dueDateTime = LocalDateTime.of(task.getDueDate(),
                 task.getDueTime() != null ? task.getDueTime() : LocalTime.of(9, 0));
-            
+
             long hoursUntilDue = ChronoUnit.HOURS.between(now, dueDateTime);
-            
+
             if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
                 hasUpcomingTasks = true;
-                
+
                 VBox taskCard = new VBox(5);
                 taskCard.setStyle(
                     "-fx-background-color: white;" +
@@ -899,13 +919,13 @@ public class TaskManagerController extends Application {
                 HBox taskHeader = new HBox(10);
                 Circle priorityIndicator = new Circle(6);
                 priorityIndicator.setStyle(getPriorityColor(task.getPriority()));
-                
+
                 Label taskDesc = new Label(task.getDescription());
                 taskDesc.setStyle(
                     "-fx-font-weight: bold;" +
                     "-fx-text-fill: #2c3e50;"
                 );
-                
+
                 taskHeader.getChildren().addAll(priorityIndicator, taskDesc);
 
                 // Due time and category
@@ -1043,10 +1063,10 @@ public class TaskManagerController extends Application {
         try {
             FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
             Parent loginRoot = loginLoader.load();
-            
+
             LoginController loginController = loginLoader.getController();
             loginController.setMainController(this); // Changed to setMainController to match pattern from SignUpController
-            
+
             Stage loginStage = new Stage();
             loginStage.setTitle("Login");
             Scene loginScene = new Scene(loginRoot);
@@ -1069,10 +1089,10 @@ public class TaskManagerController extends Application {
         try {
             FXMLLoader signUpLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
             Parent signUpRoot = signUpLoader.load();
-            
+
             SignUpController signUpController = signUpLoader.getController();
             signUpController.setMainController(this);
-            
+
             Stage signUpStage = new Stage();
             signUpStage.setTitle("Sign Up");
             Scene signUpScene = new Scene(signUpRoot);
@@ -1085,6 +1105,23 @@ public class TaskManagerController extends Application {
             System.err.println("Error Opening Sign Up Window" + e.getMessage());
             e.printStackTrace();
             showAlert("Cannot Open Sign Up Window");
+        }
+    }
+
+    /**
+     * Applying selected theme into given scene.
+     * @param scene The scene where the theme is applied.
+     * @param darkMode appears dark, otherwise false.
+     */
+    private void applyTheme(Scene scene, boolean darkMode) {
+        String lightTheme = getClass().getResource(light_Theme).toExternalForm();
+        String darkTheme = getClass().getResource(dark_Theme).toExternalForm();
+        scene.getStylesheets().remove(lightTheme);
+        scene.getStylesheets().remove(darkTheme);
+        if (darkMode) {
+            scene.getStylesheets().add(darkTheme);
+        } else {
+            scene.getStylesheets().add(lightTheme);
         }
     }
 }
