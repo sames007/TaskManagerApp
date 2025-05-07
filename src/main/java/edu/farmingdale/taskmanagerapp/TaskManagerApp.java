@@ -1,10 +1,14 @@
 package edu.farmingdale.taskmanagerapp;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -17,45 +21,62 @@ import static javafx.scene.control.PopupControl.USE_COMPUTED_SIZE;
  */
 public class TaskManagerApp extends Application {
 
-    /**
-     * @param primaryStage the primary stage for this application, onto which
-     * the application scene can be set.
-     * Applications may create other stages, if needed, but they will not be
-     * primary stages.
-     * @throws Exception If the stage doesn't load
-     */
+    private DatabaseManager dbManager; // Store instance for reuse
 
     @Override
     public void start(@NotNull Stage primaryStage) throws Exception {
-        // Load the main FXML layout
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
+        dbManager = new DatabaseManager();
 
-        // Create a DatabaseManager instance
-        DatabaseManager dbManager = new DatabaseManager();
+        // Load splash screen
+        FXMLLoader splashLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SplashScreen.fxml"));
+        Parent splashRoot = splashLoader.load();
 
-        // Load the FXML file
-        Parent root = loader.load();
+        // Match size of TaskManagerView by loading it offscreen
+        FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
+        Parent mainRoot = mainLoader.load();
+        double width = mainRoot.prefWidth(-1);
+        double height = mainRoot.prefHeight(-1);
 
-        // Get the TaskManagerController instance and inject the DatabaseManager
-        TaskManagerController taskManagerController = loader.getController();
-        taskManagerController.setDatabaseManager(dbManager);
-
-        // Create a new scene with a specified width and height
-        Scene scene = new Scene(root, USE_COMPUTED_SIZE, USE_COMPUTED_SIZE);
-
-        // Apply external CSS files for styling the UI and chat window
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm());
-
-        // Set the window title and scene, then display the stage
-        primaryStage.setTitle("Task Management System");
-        primaryStage.setScene(scene);
+        Scene splashScene = new Scene(splashRoot, width, height);
+        primaryStage.setTitle("Loading...");
+        primaryStage.setScene(splashScene);
         primaryStage.show();
+
+        // Fade-in animation
+        FadeTransition fadeIn = new FadeTransition(Duration.seconds(1), splashRoot);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+
+        PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
+
+        // Fade-out
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(1), splashRoot);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+
+        // After fade-out, switch to main scene
+        fadeOut.setOnFinished(event -> {
+            try {
+                TaskManagerController controller = mainLoader.getController();
+                controller.setDatabaseManager(dbManager);
+
+                Scene mainScene = new Scene(mainRoot, width, height);
+                mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+                mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm());
+
+                primaryStage.setTitle("Task Management System");
+                primaryStage.setScene(mainScene);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.exit();
+            }
+        });
+
+        fadeIn.setOnFinished(e -> pause.play());
+        pause.setOnFinished(e -> fadeOut.play());
+        fadeIn.play();
     }
 
-    /**
-     * @param args the command line arguments
-     */
     public static void main(String[] args) {
         launch(args);
     }
