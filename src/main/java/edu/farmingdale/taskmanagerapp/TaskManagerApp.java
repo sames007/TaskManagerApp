@@ -24,6 +24,7 @@ public class TaskManagerApp extends Application {
      * primary stages.
      * @throws Exception If the stage doesn't load
      */
+
     @Override
     public void start(@NotNull Stage primaryStage) throws Exception {
         // Load the main FXML layout

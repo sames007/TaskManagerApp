@@ -363,6 +363,7 @@ public class TaskManagerController extends Application {
         }
     }
 
+
     private String escapeCsv(String input) {
         if (input == null) return "";
         if (input.contains(",") || input.contains("\"")) {
