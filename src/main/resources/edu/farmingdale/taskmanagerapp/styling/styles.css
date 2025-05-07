@@ -236,3 +236,55 @@
 -fx-border-width: 1;
 -fx-border-color: #dae4f2;
 }
+.login-pane {
+    -fx-background-color: white;
+    -fx-spacing: 15;
+    -fx-alignment: center-left;
+}
+
+.title-text {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.subtitle-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #555;
+    -fx-wrap-text: true;
+}
+
+.form-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #444;
+}
+
+.auth-field {
+    -fx-pref-width: 300px;
+    -fx-padding: 10 12;
+    -fx-background-radius: 6px;
+    -fx-background-color: #f9f9f9;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 6px;
+}
+
+.blue-button {
+    -fx-pref-width: 300px;
+    -fx-background-color: #6c63ff;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+}
+
+.blue-button:hover {
+    -fx-background-color: #5b53e6;
+}
+
+.outline-button {
+    -fx-background-color: transparent;
+    -fx-border-color: #6c63ff;
+    -fx-text-fill: #6c63ff;
+    -fx-pref-width: 300px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+}
