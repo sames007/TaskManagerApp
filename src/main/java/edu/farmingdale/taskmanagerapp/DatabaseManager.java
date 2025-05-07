@@ -125,27 +125,24 @@ public class DatabaseManager {
     /**
      * @param s The user session to register
      */
-    public void registerUser(UserSession s) {
-        if (s == null || s.getUserName() == null || s.getPassword() == null || s.getEmail() == null) {
-            throw new IllegalArgumentException("Invalid user session data");
-        }
+    public void registerUser(UserSession s){
+        try {
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            Statement statement = conn.createStatement();
+            String sql = "INSERT INTO users (UserName, PassWord, Email, SecurityQuestion, SecurityAnswer) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+            preparedStatement.setString(1, s.getUserName());
+            preparedStatement.setString(2, s.getPassword());
+            preparedStatement.setString(3, s.getEmail());
+            preparedStatement.setString(4, s.getSecurityQuestion());
+            preparedStatement.setString(5, s.getSecurityAnswer());
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                 "INSERT INTO users (UserName, PassWord, Email, ProfilePicturePath) VALUES (?, ?, ?, ?)")) {
-            
-            stmt.setString(1, s.getUserName());
-            stmt.setString(2, s.getPassword());
-            stmt.setString(3, s.getEmail());
-            stmt.setString(4, "/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
-            
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected == 0) {
-                throw new SQLException("Creating user failed, no rows affected.");
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error registering user: " + e.getMessage());
-            throw new RuntimeException("Failed to register user", e);
+            int row = preparedStatement.executeUpdate();
+            statement.close();
+            conn.close();
+
+        } catch (Exception e){
+
         }
     }
 
@@ -153,31 +150,24 @@ public class DatabaseManager {
      * @param email The email of the user
      * @return The user session
      */
-    public UserSession getAccount(String email) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
-            stmt.setString(1, email);
+
+    public UserSession getAccount(String username) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
+            stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    UserSession s = new UserSession(
-                        rs.getString("UserName"),
-                        rs.getString("Email"),
-                        rs.getString("PassWord")
-                    );
-                    s.setUserID(rs.getInt("UserID"));
-                    try {
-                        s.setProfilePicturePath(rs.getString("ProfilePicturePath"));
-                    } catch (SQLException e) {
-                        // If the column doesn't exist, set the default profile picture
-                        s.setProfilePicturePath("/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
-                    }
+                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
                     return s;
                 } else {
                     return null;
                 }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
-        } catch (SQLException e) {
+        }catch (SQLException e){
             throw new RuntimeException(e);
         }
+
     }
 
     /**

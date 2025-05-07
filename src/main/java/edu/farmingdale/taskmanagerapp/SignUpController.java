@@ -4,6 +4,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -12,16 +13,27 @@ import javafx.stage.Stage;
  */
 public class SignUpController {
     @FXML
-    private TextField usernameField, emailField, passwordField;
+    private TextField usernameField, emailField, passwordField, securityAnswerField;
     @FXML
-    private Button createButton, backButton;
+    Button createButton, backButton;
+    @FXML
+    ComboBox<String> securityQuestionBox;
+    private DatabaseManager dm;
     
     private TaskManagerController mainController;
 
     /**
      * Initializes the controller after the FXML file is loaded.
      */
-    public void initialize() {}
+    public void initialize() {
+        securityQuestionBox.getItems().addAll(
+                "What is the name of your first pet?",
+                "What is the name of the street you grew up on?",
+                "What is the name of your childhood best friend?",
+                "What is your mother's maiden name?",
+                "What was your favorite book as a child?"
+        );
+    }
 
     /**
      * @param controller The main controller
@@ -37,16 +49,19 @@ public class SignUpController {
     @FXML
     public void createNewAccount(ActionEvent actionEvent) {
         try {
-        String username = usernameField.getText();
+            String username = usernameField.getText();
             String email = emailField.getText();
-        String password = passwordField.getText();
+            String password = passwordField.getText();
+            String selectedQuestion = securityQuestionBox.getValue();
+            String securityAnswer = securityAnswerField.getText();
 
-            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty() || securityAnswer.isEmpty()) {
                 mainController.showAlert("Please fill in all fields");
                 return;
             }
 
-            UserSession newUser = new UserSession(username, email, password);
+            UserSession newUser = new UserSession(usernameField.getText(), emailField.getText(), passwordField.getText(), selectedQuestion, securityAnswer);
             UserSession existingUser = mainController.getDbManager().getAccount(newUser.getEmail());
 
             if (existingUser == null) {

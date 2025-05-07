@@ -9,6 +9,8 @@ public class UserSession {
     private String userName;
     private String email;
     private String password;
+    private String securityQuestion;
+    private String securityAnswer;
     private String profilePicturePath;
 
     /**
@@ -16,10 +18,12 @@ public class UserSession {
      * @param email User's email
      * @param password User's password
      */
-    public UserSession(String userName, String email, String password) {
+    public UserSession(String userName, String email, String password, String securityQuestion, String securityAnswer) {
         this.userName = userName;
         this.email = email;
         this.password = password;
+        this.securityQuestion = securityQuestion;
+        this.securityAnswer = securityAnswer;
         this.userID = 0;
         this.profilePicturePath = null;
     }
@@ -65,6 +69,7 @@ public class UserSession {
         return email;
     }
 
+
     /**
      * Sets the user's email
      * @param email the email to set
@@ -104,6 +109,30 @@ public class UserSession {
     public void setProfilePicturePath(String profilePicturePath) {
         this.profilePicturePath = profilePicturePath;
     }
+
+    /**
+     * Gets the user's security question
+     * @return the user's security question
+     */
+    public String getSecurityQuestion(){return this.securityQuestion;}
+
+    /**
+     * Sets the user's security question
+     * @param s the user security question to set
+     */
+    public void setSecurityQuestion(String s){this.securityQuestion = s;}
+
+    /**
+     * Gets the user's security answer
+     * @return the user's security answer
+     */
+    public String getSecurityAnswer(){return this.securityAnswer;}
+
+    /**
+     * Sets the user's security a
+     * @param s the user security answer to set
+     */
+    public void setSecurityAnswer(String s){this.securityAnswer = s;}
 
     /**
      * Erases User Information

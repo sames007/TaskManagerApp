@@ -42,7 +42,7 @@ public class LoginController {
             String email = emailTextField.getText();
             String password = passwordTextField.getText();
 
-            UserSession user = new UserSession("", email, password);
+            UserSession user = new UserSession("", email, password, "", "");
             UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
             
             if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() || 
