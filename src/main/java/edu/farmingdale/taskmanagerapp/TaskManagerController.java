@@ -19,10 +19,12 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Circle;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import jfxtras.scene.control.agenda.Agenda;
 import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
-import java.io.IOException;
+
+import java.io.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -38,6 +40,8 @@ import javafx.scene.image.ImageView;
  */
 public class TaskManagerController extends Application {
 
+    @FXML public Button importBttn;
+    @FXML public Button exportBttn;
     @FXML private Button notificationBtn;
     @FXML private TableView<Task> taskTable;
     @FXML private TableColumn<Task, String> taskColumn;
@@ -57,6 +61,7 @@ public class TaskManagerController extends Application {
     @FXML private ImageView profilePicture;
     @FXML private Circle notificationIndicator;
     @FXML private ToggleButton themeToggleBtn;
+
 
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
@@ -313,6 +318,161 @@ public class TaskManagerController extends Application {
             }
         });
     }
+
+    /**
+     * Exports the current list of tasks to a CSV file.
+     *
+     * This method opens a file chooser dialog allowing the user to specify the
+     * location and name of the output CSV file. It writes each task as a line in
+     * the file, including the following fields:
+     * Description, DueDate, DueTime, Priority, Status, Category, and Reminder.
+     *
+     * Fields that contain commas or quotes are properly escaped to ensure CSV
+     * format compatibility. If the export is successful, a confirmation alert
+     * is shown. If an error occurs (e.g., I/O error), an alert displays the
+     * corresponding error message.
+     *
+     * Example output line:
+     * "Finish report",2025-05-10,14:30,HIGH,In Progress,Work,2025-05-08
+     */
+    @FXML
+    private void exportCsv() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Tasks to CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+        File file = fileChooser.showSaveDialog(taskTable.getScene().getWindow());
+
+        if (file != null) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("Description,DueDate,DueTime,Priority,Status,Category,Reminder\n");
+                for (Task task : tasks) {
+                    writer.write(String.format("%s,%s,%s,%s,%s,%s,%s\n",
+                            escapeCsv(task.getDescription()),
+                            task.getDueDate(),
+                            task.getDueTime(),
+                            task.getPriority(),
+                            task.getStatus(),
+                            task.getCategory(),
+                            task.getReminder() != null ? task.getReminder() : ""
+                    ));
+                }
+                showAlert("Tasks successfully exported.");
+            } catch (IOException e) {
+                showAlert("Error exporting CSV: " + e.getMessage());
+            }
+        }
+    }
+
+    private String escapeCsv(String input) {
+        if (input == null) return "";
+        if (input.contains(",") || input.contains("\"")) {
+            return "\"" + input.replace("\"", "\"\"") + "\"";
+        }
+        return input;
+    }
+
+    /**
+     * Imports tasks from a user-selected CSV file and adds them to the task list.
+     *
+     * This method opens a file chooser dialog to let the user select a CSV file.
+     * It reads the file line by line, skipping the first line (assumed header),
+     * and parses each line into a Task object using comma-separated fields.
+     *
+     * Expected field order:
+     * Description, DueDate (yyyy-MM-dd), DueTime (HH:mm), Priority, Status, Category, [Optional Reminder]
+     *
+     * - Fields with commas or quotes are safely parsed using a custom parser.
+     * - Lines with invalid formats (e.g., bad dates or missing fields) are skipped
+     *   and reported in the console but do not stop the entire import.
+     *
+     * Shows a success alert when finished, and logs how many tasks were imported.
+     */
+
+    @FXML
+    private void importCsv() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Import Tasks from CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+        File file = fileChooser.showOpenDialog(taskTable.getScene().getWindow());
+
+        if (file != null) {
+            int importedCount = 0;
+            int skippedCount = 0;
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line = reader.readLine(); // Skip header
+                int lineNumber = 2; // Header is line 1
+
+                while ((line = reader.readLine()) != null) {
+                    try {
+                        String[] tokens = parseCsvLine(line);
+                        if (tokens.length < 6) {
+                            System.out.println("[CSV Import] Skipped line " + lineNumber + ": Not enough fields.");
+                            skippedCount++;
+                            lineNumber++;
+                            continue;
+                        }
+
+                        String description = tokens[0];
+                        LocalDate dueDate = LocalDate.parse(tokens[1]);
+                        LocalTime dueTime = LocalTime.parse(tokens[2]);
+                        String priority = tokens[3];
+                        String status = tokens[4];
+                        String category = tokens[5];
+                        LocalDate reminder = (tokens.length > 6 && !tokens[6].isEmpty()) ? LocalDate.parse(tokens[6]) : null;
+
+                        Task task = new Task(description, dueDate, dueTime, priority);
+                        task.setStatus(status);
+                        task.setCategory(category);
+                        task.setReminder(reminder);
+
+                        addImportedTask(task);
+                        importedCount++;
+                    } catch (Exception e) {
+                        System.out.println("[CSV Import] Skipped line " + lineNumber + ": Invalid format or parse error.");
+                        System.out.println("  >> Content: " + line);
+                        System.out.println("  >> Error: " + e.getMessage());
+                        skippedCount++;
+                    }
+                    lineNumber++;
+                }
+
+                // Alert summary to user
+                if (skippedCount > 0) {
+                    showAlert("Import completed with issues:\n" +
+                            importedCount + " task(s) added, " +
+                            skippedCount + " line(s) skipped due to formatting errors.\n" +
+                            "Check console for details.");
+                } else {
+                    showAlert("Successfully imported " + importedCount + " task(s).");
+                }
+
+            } catch (IOException e) {
+                System.out.println("[CSV Import] Failed to read the file: " + e.getMessage());
+                showAlert("Failed to read the selected file.");
+            }
+        }
+    }
+    private String[] parseCsvLine(String line) {
+        List<String> tokens = new ArrayList<>();
+        boolean insideQuote = false;
+        StringBuilder sb = new StringBuilder();
+        for (char c : line.toCharArray()) {
+            if (c == '\"') {
+                insideQuote = !insideQuote;
+            } else if (c == ',' && !insideQuote) {
+                tokens.add(sb.toString().trim());
+                sb.setLength(0);
+            } else {
+                sb.append(c);
+            }
+        }
+        tokens.add(sb.toString().trim()); // add last token
+        return tokens.toArray(new String[0]);
+    }
+
+
+
 
     /**
      * Loads tasks from the database into the application's task list and refreshes the UI components.
