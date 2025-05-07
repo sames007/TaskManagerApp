@@ -35,6 +35,7 @@
                 <Hyperlink text="Forgot your password?" />
             </HBox>
 
+
             <Button fx:id="loginButton" onAction="#login" styleClass="blue-button" text="Log In" />
 
             <HBox alignment="CENTER">

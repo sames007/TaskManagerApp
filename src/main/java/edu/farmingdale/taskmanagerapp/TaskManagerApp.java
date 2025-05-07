@@ -54,6 +54,7 @@ public class TaskManagerApp extends Application {
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
 
+
         // After fade-out, switch to main scene
         fadeOut.setOnFinished(event -> {
             try {
