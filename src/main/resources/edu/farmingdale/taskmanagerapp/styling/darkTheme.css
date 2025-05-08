@@ -1,0 +1,252 @@
+
+/* --- Root Style --- */
+.root {
+    -fx-font-family: "SF Pro Text", "SF Pro", system-ui, sans-serif;
+    -fx-background-color: #181F2A;
+}
+
+/* ============================ */
+/* Buttons                       */
+/* ============================ */
+.blue-button {
+    -fx-background-color: #1565C0;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-padding: 0.5em 1em;
+    -fx-background-radius: 4;
+    -fx-border-color: #1565C0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4;
+}
+.blue-button:hover {
+    -fx-background-color: derive(#2979FF, 20%);
+}
+
+.ai-chat-button {
+    -fx-background-color: #1565C0;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-padding: 0.5em 1em;
+    -fx-background-radius: 4;
+    -fx-border-color: #1565C0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4;
+}
+.ai-chat-button:hover {
+    -fx-background-color: derive(#1E88E5, 20%);
+}
+
+/* Focus style for buttons */
+.blue-button:focused, .ai-chat-button:focused {
+    -fx-border-color: derive(#2979FF, -20%);
+    -fx-border-width: 2px;
+}
+
+/* ============================ */
+/* Labels                        */
+/* ============================ */
+.title-label {
+    -fx-font-size: 1.5em;
+    -fx-font-weight: bold;
+    -fx-text-fill: #90caf9;
+}
+.section-label {
+    -fx-font-size: 1.2em;
+    -fx-font-weight: bold;
+    -fx-text-fill: #64b5f6;
+}
+
+/* ============================ */
+/* TableView                     */
+/* ============================ */
+.table-view {
+    -fx-table-cell-border-color: #222a3a;
+    -fx-focus-color: #2979FF;
+    -fx-faint-focus-color: transparent;
+    -fx-background-color: #181F2A;
+}
+.table-view .column-header-background {
+    -fx-background-color: #222a3a; /* header row background */
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-padding: 0.3em;
+}
+.table-view .column-header .label {
+    -fx-text-fill: #90caf9;
+    -fx-font-weight: bold;
+}
+.table-view .filler {
+    -fx-background-color: #222a3a; /* fills empty header space */
+}
+/* Row striping */
+.table-view .table-row-cell:odd {
+    -fx-background-color: #181F2A;
+}
+.table-view .table-row-cell:even {
+    -fx-background-color: #222a3a;
+}
+/* Hover effect */
+.table-view .table-row-cell:hover {
+    -fx-background-color: #2979FF;
+    -fx-text-fill: #fff;
+}
+/* Selection */
+.table-view .table-row-cell:selected {
+    -fx-background-color: #2979FF;
+    -fx-text-fill: #fff;
+}
+.table-view .table-row-cell:selected:focused {
+    -fx-background-color: #2979FF;
+    -fx-text-fill: #fff;
+}
+.table-view .table-row-cell .text {
+    -fx-fill: #90caf9;
+}
+
+/* ============================ */
+/* ListView                      */
+/* ============================ */
+.list-view {
+    -fx-background-insets: 0;
+}
+.list-view .list-cell {
+    -fx-padding: 0.4em 0.6em;
+}
+/* Row striping */
+.list-view .list-cell:odd {
+    -fx-background-color: #113f67;
+}
+.list-view .list-cell:even {
+    -fx-background-color: #1565C0;
+}
+/* Hover effect */
+.list-view .list-cell:hover {
+    -fx-background-color: #113f67;
+}
+/* Selection */
+.list-view .list-cell:selected {
+    -fx-background-color: #1565C0;
+    -fx-text-fill: #2979FF;
+}
+
+/* ============================ */
+/* DatePicker and Calendar       */
+/* ============================ */
+/* Main DatePicker field */
+.date-picker .text-field {
+    -fx-background-color: #113f67;
+    -fx-text-fill: #90caf9;
+    -fx-border-color: #90caf9;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+.date-picker > .arrow-button {
+    -fx-background-color: #90caf9;
+    -fx-background-radius: 0 4 4 0;
+    -fx-padding: 0.3em;
+}
+.date-picker > .arrow-button .arrow {
+    -fx-scale-x: 1;
+    -fx-scale-y: 1;
+    -fx-fill: #90caf9;
+}
+/* Popup calendar header */
+.date-picker .month-year-pane {
+    -fx-background-color: #1565C0;
+}
+.date-picker .month-year-pane .label {
+    -fx-text-fill: #90caf9;
+    -fx-font-weight: bold;
+}
+/* Day cells */
+.date-picker .day-cell {
+    -fx-text-fill: #90caf9;
+    -fx-border-color: #181F2A;
+}
+.date-picker .day-cell:hover {
+    -fx-background-color: #1E88E5;
+}
+.date-picker .day-cell:selected {
+    -fx-background-color: #1565C0;
+    -fx-text-fill: #181F2A;
+}
+.date-picker .day-cell:focused {
+    -fx-background-color: derive(#1E88E5, 20%);
+}
+.date-picker {
+    -fx-border-color: #1E88E5;
+    -fx-border-width: 2px;
+}
+
+.date-picker-popup .month-year-pane,
+.date-picker-popup .week-number-cell,
+.date-picker-popup .day-cell,
+.date-picker-popup .calendar-grid {
+    -fx-background-color: #113f67;
+    -fx-text-fill: #90caf9;
+}
+
+.profile-picture {
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 1);
+    -fx-background-radius: 24;
+}
+
+.profile-picture:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+/* Authentication Fields */
+.auth-field {
+    -fx-background-color: blue;
+    -fx-background-radius: 4;
+    -fx-border-color: #1E88E5;
+    -fx-border-radius: 4;
+    -fx-border-width: 1;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+}
+
+.auth-field:focused {
+    -fx-border-color: #2979FF;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(21, 101, 192, 0.1), 8, 0, 0, 0);
+}
+
+/* ============================ */
+/* Agenda                      */
+/* ============================ */
+/* agendaVbox */
+#agendaVbox {
+    -fx-background-color: #1565C0;
+    -fx-background-radius: 8px;
+}
+
+/* Change font color of all text inside agendaVbox */
+#agendaVbox, #agendaVbox .label {
+    -fx-text-fill: #90caf9;
+}
+
+/* agendaList */
+#agendaList {
+    -fx-background-color: #113f67;
+}
+
+/* previewPane */
+#previewPane {
+     -fx-background-color: #113f67;
+        -fx-background-radius: 8;
+        -fx-border-radius: 8;
+        -fx-border-color: #90caf9;
+}
+
+/* bottomBar */
+#bottomBar {
+    -fx-background-color: #222a3a;
+    -fx-background-radius: 8;
+    -fx-border-width: 1;
+    -fx-border-color: #222a3a;
+}
