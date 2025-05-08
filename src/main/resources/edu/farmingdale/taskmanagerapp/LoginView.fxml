@@ -12,8 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-
-<HBox prefHeight="500" prefWidth="800" spacing="0" style="-fx-background-color: #ffffff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.LoginController">
+<HBox prefHeight="500" prefWidth="800" spacing="0" style="-fx-background-color: #ffffff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.LoginController">
 
 
     <!-- Left: Form -->
@@ -33,7 +32,7 @@
         <PasswordField fx:id="passwordTextField" promptText="Enter password" styleClass="auth-field" />
 
 
-        <Hyperlink fx:id="forgotPasswordLink" text="Forgot your password?">
+        <Hyperlink fx:id="forgotPasswordLink" onAction="#displayForgotPassword" text="Forgot your password?">
          <VBox.margin>
             <Insets left="85.0" />
          </VBox.margin></Hyperlink>
