@@ -39,15 +39,20 @@ public class SignUpController {
     /**
      * Initializes the controller and binds the login link behavior.
      */
-
+    @FXML
     public void initialize() {
-        securityQuestionBox.getItems().addAll(
-                "What is the name of your first pet?",
-                "What is the name of the street you grew up on?",
-                "What is the name of your childhood best friend?",
-                "What is your mother's maiden name?",
-                "What was your favorite book as a child?"
-        );
+        if (securityQuestionBox != null) {
+            securityQuestionBox.getItems().addAll(
+                    "What is the name of your first pet?",
+                    "What is the name of the street you grew up on?",
+                    "What is the name of your childhood best friend?",
+                    "What is your mother's maiden name?",
+                    "What was your favorite book as a child?"
+            );
+        } else {
+            System.err.println("Warning: securityQuestionBox was not properly initialized!");
+        }
+        
         if (loginLink != null) {
             loginLink.setOnAction(e -> goToLogin());
         }
