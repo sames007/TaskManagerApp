@@ -29,7 +29,7 @@ public class SignUpController {
     @FXML
     private ComboBox<String> securityQuestionBox;
     private DatabaseManager dm;
-    
+
     @FXML
     private Hyperlink loginLink;
 
@@ -48,16 +48,16 @@ public class SignUpController {
                 "What is your mother's maiden name?",
                 "What was your favorite book as a child?"
         );
-    if (loginLink != null) {
+        if (loginLink != null) {
             loginLink.setOnAction(e -> goToLogin());
         }
-    
+    }
 
     /**
      * Injects the main controller for database access.
      * @param controller the TaskManagerController
      */
-    public void setMainController(TaskManagerController controller) {
+    public void setMainController (TaskManagerController controller){
         this.mainController = controller;
     }
 
@@ -66,7 +66,7 @@ public class SignUpController {
      * @param actionEvent the button event
      */
     @FXML
-    public void createNewAccount(ActionEvent actionEvent) {
+    public void createNewAccount (ActionEvent actionEvent){
         try {
 
             String username = usernameField.getText();
@@ -117,14 +117,14 @@ public class SignUpController {
      * Navigates back to the login screen.
      */
     @FXML
-    public void handleBack() {
+    public void handleBack () {
         goToLogin();
     }
 
     /**
      * Helper method to load the login screen into the current stage.
      */
-    private void goToLogin() {
+    private void goToLogin () {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
             Parent root = loader.load();
