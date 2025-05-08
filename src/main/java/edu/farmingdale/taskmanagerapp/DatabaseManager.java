@@ -42,9 +42,9 @@ public class DatabaseManager {
                 props.setProperty("useSSL", "true");
                 props.setProperty("autoReconnect", "true");
                 props.setProperty("maxReconnects", "3");
-                
+
                 conn = DriverManager.getConnection(DB_URL, props);
-                
+
                 // Check if the ProfilePicturePath column exists and add it if it doesn't
                 try (Statement stmt = conn.createStatement()) {
                     // Check if a column exists
@@ -58,7 +58,7 @@ public class DatabaseManager {
                 } catch (SQLException e) {
                     LOGGER.log(Level.WARNING, "Error checking/adding ProfilePicturePath column: " + e.getMessage());
                 }
-                
+
                 return;
             } catch (SQLException e) {
                 retries++;
@@ -125,7 +125,7 @@ public class DatabaseManager {
     /**
      * @param s The user session to register
      */
-    public void registerUser(UserSession s){
+    public void registerUser(UserSession s) {
         try {
             conn = DriverManager.getConnection(DB_URL, USER, PASS);
             Statement statement = conn.createStatement();
@@ -141,16 +141,15 @@ public class DatabaseManager {
             statement.close();
             conn.close();
 
-        } catch (Exception e){
+        } catch (Exception e) {
 
         }
     }
 
     /**
-     * @param email The email of the user
+     * @param username The username of the user
      * @return The user session
      */
-
     public UserSession getAccount(String username) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
             stmt.setString(1, username);
@@ -164,10 +163,61 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
-        }catch (SQLException e){
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
+    }
+
+    /**
+     * @param email The email of the user
+     * @return The user session
+     */
+    public UserSession getAccountByEmail(String email) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
+                    return s;
+                } else {
+                    return null;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+
+    /**
+     * Updates password in database
+     * @param email
+     * @param newPassword
+     * @return boolean
+     */
+    public boolean updatePassword(String email, String newPassword) {
+        try {
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            String sql = "UPDATE users SET Password = ? WHERE Email = ?";
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+            preparedStatement.setString(1, newPassword);
+            preparedStatement.setString(2, email);
+
+            int rows = preparedStatement.executeUpdate();
+            preparedStatement.close();
+            conn.close();
+
+            if (rows == 0) {
+                throw new RuntimeException("No user found with that email!");
+            }
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("Error updating password: " + e.getMessage());
+        }
     }
 
     /**

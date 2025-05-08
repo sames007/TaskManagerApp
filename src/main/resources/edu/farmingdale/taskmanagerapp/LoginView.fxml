@@ -14,7 +14,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<BorderPane prefHeight="500" prefWidth="800" style="-fx-background-color: #6c63ff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.LoginController">
+<BorderPane prefHeight="500" prefWidth="800" style="-fx-background-color: #6c63ff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.LoginController">
 
     <left>
         <VBox alignment="CENTER_LEFT" spacing="15" styleClass="login-pane">
@@ -24,15 +24,15 @@
             <Text styleClass="title-text" text="Welcome back!" />
             <Text styleClass="subtitle-text" text="Manage your tasks and stay organized with ease." />
 
-            <Label styleClass="form-label" text="Email " />
-            <TextField fx:id="emailTextField" promptText="Enter your mail address" styleClass="auth-field" />
+            <Label styleClass="form-label" text="Username" />
+            <TextField fx:id="emailTextField" promptText="Enter your username" styleClass="auth-field" />
 
             <Label styleClass="form-label" text="Password " />
             <TextField fx:id="passwordTextField" promptText="Enter password" styleClass="auth-field" />
 
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <CheckBox text="Remember me" />
-                <Hyperlink text="Forgot your password?" />
+                <Hyperlink onAction="#displayForgotPassword" text="Forgot your password?" />
             </HBox>
 
 
