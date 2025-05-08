@@ -1,5 +1,6 @@
 package edu.farmingdale.taskmanagerapp;
 
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -22,6 +23,7 @@ public class ProfileManager {
     private final TaskManagerController mainController;
     private ImageView profilePicture;
     private UserSession currentUser;
+    private ToggleButton themeToggleBtn;
 
     /**
      * Constructor for the ProfileManager.
@@ -35,8 +37,9 @@ public class ProfileManager {
     /**
      * @param profilePicture The ImageView to initialize
      */
-    public void initialize(ImageView profilePicture) {
+    public void initialize(ImageView profilePicture, ToggleButton themeToggleBtn) {
         this.profilePicture = profilePicture;
+        this.themeToggleBtn = themeToggleBtn;
         setupProfilePictureClickHandler();
     }
 
@@ -44,7 +47,7 @@ public class ProfileManager {
      * Sets up the click handler for the profile picture.
      */
     private void setupProfilePictureClickHandler() {
-        if (profilePicture != null) {
+        if (profilePicture != null && themeToggleBtn != null) {
             profilePicture.setOnMouseClicked(event -> {
                 if (currentUser == null) {
                     showNotLoggedInMenu();
@@ -62,11 +65,13 @@ public class ProfileManager {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem loginItem = new MenuItem("Login");
         MenuItem registerItem = new MenuItem("Register");
+        CheckMenuItem darkModeItem = new CheckMenuItem("Dark Mode");
 
         loginItem.setOnAction(event -> mainController.showLoginScreen());
         registerItem.setOnAction(event -> mainController.showSignUpScreen());
+        darkModeItem.setSelected(themeToggleBtn.isSelected());
 
-        contextMenu.getItems().addAll(loginItem, registerItem);
+        contextMenu.getItems().addAll(loginItem, registerItem, darkModeItem);
         contextMenu.show(profilePicture, profilePicture.getScene().getWindow().getX() + profilePicture.getLayoutX(), 
                         profilePicture.getScene().getWindow().getY() + profilePicture.getLayoutY());
     }
@@ -78,13 +83,25 @@ public class ProfileManager {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem changePictureItem = new MenuItem("Change Profile Picture");
         MenuItem viewProfileItem = new MenuItem("View Profile");
+        CheckMenuItem darkModeItem = new CheckMenuItem("Dark Mode");
         MenuItem logoutItem = new MenuItem("Logout");
+
+        darkModeItem.setSelected(themeToggleBtn.isSelected());
+
+        darkModeItem.setOnAction(event -> {
+            boolean isDark = darkModeItem.isSelected();
+            themeToggleBtn.setSelected(isDark);
+            Scene scene = profilePicture.getScene();
+            if (scene != null) {
+                mainController.applyTheme(scene, isDark);
+            }
+        });
 
         changePictureItem.setOnAction(event -> changeProfilePicture());
         viewProfileItem.setOnAction(event -> viewProfile());
         logoutItem.setOnAction(event -> logout());
 
-        contextMenu.getItems().addAll(changePictureItem, viewProfileItem, logoutItem);
+        contextMenu.getItems().addAll(changePictureItem, viewProfileItem, logoutItem, darkModeItem);
         contextMenu.show(profilePicture, profilePicture.getScene().getWindow().getX() + profilePicture.getLayoutX(),
                         profilePicture.getScene().getWindow().getY() + profilePicture.getLayoutY());
     }
@@ -146,6 +163,10 @@ public class ProfileManager {
      */
     public void setCurrentUser(UserSession user) {
         this.currentUser = user;
+        if (profilePicture == null) {
+            return; // Early return if ImageView is not initialized yet
+        }
+
         if (user != null && user.getProfilePicturePath() != null) {
             try {
                 File profilePicFile = new File(user.getProfilePicturePath());
@@ -167,9 +188,19 @@ public class ProfileManager {
      * Resets the profile picture to the default image.
      */
     private void resetProfilePicture() {
-        Image defaultImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream(DEFAULT_PROFILE_PIC)));
-        profilePicture.setImage(defaultImage);
+        if (profilePicture == null) {
+            return; // Early return if ImageView is not initialized yet
+        }
+
+        try {
+            Image defaultImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream(DEFAULT_PROFILE_PIC)));
+            profilePicture.setImage(defaultImage);
+        } catch (Exception e) {
+            // Log error or show the alert if needed
+            System.err.println("Failed to load default profile picture: " + e.getMessage());
+        }
     }
+
 
     /**
      * Creates the profile pictures directory if it doesn't exist.

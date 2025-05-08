@@ -52,10 +52,25 @@ public class SignUpController {
         } else {
             System.err.println("Warning: securityQuestionBox was not properly initialized!");
         }
-        
+
         if (loginLink != null) {
-            loginLink.setOnAction(e -> goToLogin());
+            loginLink.setOnAction(e -> {
+                try {
+                    if (mainController == null) {
+                        System.err.println("Warning: mainController is not initialized!");
+                        return;
+                    }
+                    goToLogin();
+                } catch (Exception ex) {
+                    if (mainController != null) {
+                        mainController.showAlert("Error navigating to login: " + ex.getMessage());
+                    } else {
+                        System.err.println("Error navigating to login: " + ex.getMessage());
+                    }
+                }
+            });
         }
+
     }
 
     /**

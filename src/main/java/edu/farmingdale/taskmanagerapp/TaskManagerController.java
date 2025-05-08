@@ -98,10 +98,10 @@ public class TaskManagerController extends Application {
     public void initialize() {
         // Initialize profile manager
         profileManager = new ProfileManager(this);
-        if (profilePicture != null) {
-            profileManager.initialize(profilePicture);
+        if (profilePicture != null && themeToggleBtn != null) {
+            profileManager.initialize(profilePicture, themeToggleBtn);
         } else {
-            System.err.println("Profile picture ImageView not found in FXML!");
+            System.err.println("Profile picture ImageView or Theme Toggle not found in FXML!");
         }
 
         // Set up the TableView columns with property mappings
@@ -217,8 +217,12 @@ public class TaskManagerController extends Application {
         });
 
         // Initialize the notification service
-        notificationIndicator.visibleProperty().bind(hasPendingNotification);
-        notificationIndicator.managedProperty().bind(hasPendingNotification);
+        if (notificationIndicator != null) {
+            notificationIndicator.visibleProperty().bind(hasPendingNotification);
+            notificationIndicator.managedProperty().bind(hasPendingNotification);
+        } else {
+            System.err.println("Notification Indicator not found in FXML!");
+        }
 
         // --- Create and add the Agenda control programmatically, now named "agenda" ---
         agenda = new Agenda();
@@ -292,7 +296,7 @@ public class TaskManagerController extends Application {
         // Start the periodic service
         NotificationService.startNotificationService(this);
 
-        // ALSO re‐run the indicator logic if tasks list changes
+        // ALSO re‐run the indicator logic if the current tasks list changes
         tasks.addListener((ListChangeListener<Task>) change -> {
             NotificationService.checkDueTasks(this);
         });
@@ -308,7 +312,7 @@ public class TaskManagerController extends Application {
                 themeToggleBtn.setSelected(false);
                 themeToggleBtn.setText("Dark Mode");
                 themeToggleBtn.setOnAction(e -> {
-                    darkMode = themeToggleBtn.isSelected();
+                    boolean darkMode = themeToggleBtn.isSelected();
                     themeToggleBtn.setText(darkMode ? "Light Mode" : "Dark Mode");
                     Scene scene = themeToggleBtn.getScene();
                     if(scene != null) {
@@ -375,19 +379,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Imports tasks from a user-selected CSV file and adds them to the task list.
-     * This method opens a file chooser dialog to let the user select a CSV file.
-     * It reads the file line by line, skipping the first line (assumed header),
-     * and parses each line into a Task object using comma-separated fields.
-     * Expected field order:
-     * Description, DueDate (yyyy-MM-dd), DueTime (HH:mm), Priority, Status, Category, [Optional Reminder]
-     * - Fields with commas or quotes are safely parsed using a custom parser.
-     * - Lines with invalid formats (e.g., bad dates or missing fields) are skipped
-     *   and reported in the console but do not stop the entire import.
-     * Shows a success alert when the import is finished and logs how many tasks were imported.
-     */
-
-    /**
-     * Imports tasks from a user-selected CSV file and adds them to the task list.
      */
     @FXML
     private void importCsv() {
@@ -414,18 +405,7 @@ public class TaskManagerController extends Application {
                             continue;
                         }
 
-                        String description = tokens[0];
-                        LocalDate dueDate = LocalDate.parse(tokens[1]);
-                        LocalTime dueTime = LocalTime.parse(tokens[2]);
-                        String priority = tokens[3];
-                        String status = tokens[4];
-                        String category = tokens[5];
-                        LocalDate reminder = (tokens.length > 6 && !tokens[6].isEmpty()) ? LocalDate.parse(tokens[6]) : null;
-
-                        Task task = new Task(description, dueDate, dueTime, priority);
-                        task.setStatus(status);
-                        task.setCategory(category);
-                        task.setReminder(reminder);
+                        Task task = getTask(tokens);
 
                         addImportedTask(task);
                         importedCount++;
@@ -453,6 +433,27 @@ public class TaskManagerController extends Application {
                 showAlert("Failed to read the selected file.");
             }
         }
+    }
+
+    /**
+     * @param tokens the array of tokens
+     * @return the token value
+     */
+    @NotNull
+    private static Task getTask(@NotNull String[] tokens) {
+        String description = tokens[0];
+        LocalDate dueDate = LocalDate.parse(tokens[1]);
+        LocalTime dueTime = LocalTime.parse(tokens[2]);
+        String priority = tokens[3];
+        String status = tokens[4];
+        String category = tokens[5];
+        LocalDate reminder = (tokens.length > 6 && !tokens[6].isEmpty()) ? LocalDate.parse(tokens[6]) : null;
+
+        Task task = new Task(description, dueDate, dueTime, priority);
+        task.setStatus(status);
+        task.setCategory(category);
+        task.setReminder(reminder);
+        return task;
     }
 
     /**
@@ -499,7 +500,7 @@ public class TaskManagerController extends Application {
     }
 
     /**
-     * Refreshes the Agenda control with appointments based on the tasks list.
+     * Refreshes the Agenda control with appointments based on the current tasks list.
      */
     private void refreshAgendaAppointments() {
         if (agenda == null) {
@@ -541,7 +542,7 @@ public class TaskManagerController extends Application {
 
     /**
      * @param priority the priority of the task
-     * @return Priority of task
+     * @return Priority of the task
      */
     private Agenda.AppointmentGroup getAppointmentGroupForPriority(String priority) {
 
@@ -1094,7 +1095,7 @@ public class TaskManagerController extends Application {
 
                 taskHeader.getChildren().addAll(priorityIndicator, taskDesc);
 
-                // Due time and category
+                // The 'Due' label with time and category
                 Label dueInfo = new Label(String.format("Due in %d hours • %s",
                     hoursUntilDue, task.getCategory()));
                 dueInfo.setStyle("-fx-text-fill: #7f8c8d;");
@@ -1233,7 +1234,7 @@ public class TaskManagerController extends Application {
             Parent loginRoot = loginLoader.load();
 
             LoginController loginController = loginLoader.getController();
-            loginController.setMainController(this); // Changed to setMainController to match pattern from SignUpController
+            loginController.setMainController(this); // Changed to setMainController to match the pattern from SignUpController
 
             Stage loginStage = new Stage();
             loginStage.setTitle("Login");
@@ -1277,13 +1278,13 @@ public class TaskManagerController extends Application {
     }
 
     /**
-     * Applying selected theme into the given scene.
+     * Applying the selected theme into the given scene.
      * @param scene The scene where the theme is applied.
      * @param darkMode appears dark, otherwise false.
      */
-    private void applyTheme(@NotNull Scene scene, boolean darkMode) {
-        String lightTheme = getClass().getResource(light_Theme).toExternalForm();
-        String darkTheme = getClass().getResource(dark_Theme).toExternalForm();
+    void applyTheme(@NotNull Scene scene, boolean darkMode) {
+        String lightTheme = Objects.requireNonNull(getClass().getResource(light_Theme)).toExternalForm();
+        String darkTheme = Objects.requireNonNull(getClass().getResource(dark_Theme)).toExternalForm();
         scene.getStylesheets().remove(lightTheme);
         scene.getStylesheets().remove(darkTheme);
         if (darkMode) {
