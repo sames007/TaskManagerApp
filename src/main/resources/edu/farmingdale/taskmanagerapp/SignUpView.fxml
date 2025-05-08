@@ -1,48 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.text.Text?>
 
 <HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="edu.farmingdale.taskmanagerapp.SignUpController"
-      prefHeight="500.0" prefWidth="800.0" spacing="0" style="-fx-background-color: white;"
+      prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: white;"
       stylesheets="@styling/styles.css">
 
-    <!-- Left Panel: Form -->
-    <VBox alignment="CENTER_LEFT" spacing="15" HBox.hgrow="ALWAYS" styleClass="login-pane">
-        <padding><Insets top="50" bottom="50" left="50" right="50"/></padding>
+    <VBox alignment="TOP_CENTER" spacing="7" styleClass="login-pane" HBox.hgrow="ALWAYS">
+        <padding><Insets bottom="20.0" left="60.0" right="60.0" top="5.0" /></padding>
 
-        <ImageView fx:id="logoImage" fitHeight="40" fitWidth="40"/>
-        <Text styleClass="title-text" text="Create an Account"/>
-        <Text styleClass="subtitle-text" text="Sign up to manage your tasks seamlessly."/>
+        <ImageView fx:id="logoImage" fitHeight="30" fitWidth="30">
+            <VBox.margin><Insets bottom="2.0" /></VBox.margin>
+        </ImageView>
+        
+        <VBox spacing="2">
+            <Text styleClass="title-text" text="Create an Account"/>
+            <Text styleClass="subtitle-text" text="Sign up to manage your tasks seamlessly."/>
+            <VBox.margin><Insets bottom="5.0" /></VBox.margin>
+        </VBox>
 
-        <Label styleClass="form-label" text="Username"/>
-        <TextField fx:id="usernameField" promptText="Create username..." styleClass="auth-field"/>
+        <VBox spacing="2">
+            <Label styleClass="form-label" text="Username"/>
+            <TextField fx:id="usernameField" promptText="Create username..." styleClass="auth-field"/>
+        </VBox>
 
-        <Label styleClass="form-label" text="Email"/>
-        <TextField fx:id="emailField" promptText="Enter email..." styleClass="auth-field"/>
+        <VBox spacing="2">
+            <Label styleClass="form-label" text="Email"/>
+            <TextField fx:id="emailField" promptText="Enter email..." styleClass="auth-field"/>
+        </VBox>
 
-        <Label styleClass="form-label" text="Password"/>
-        <PasswordField fx:id="passwordField" promptText="Enter password..." styleClass="auth-field"/>
+        <VBox spacing="2">
+            <Label styleClass="form-label" text="Password"/>
+            <PasswordField fx:id="passwordField" promptText="Enter password..." styleClass="auth-field"/>
+        </VBox>
 
-        <Button fx:id="createButton" text="Create Account" styleClass="blue-button" onAction="#createNewAccount"/>
+        <VBox spacing="2">
+            <Label styleClass="form-label" text="Security Question"/>
+            <ComboBox fx:id="securityQuestionBox" promptText="Choose a security question..." 
+                      styleClass="auth-field" maxWidth="Infinity"/>
+        </VBox>
 
-        <HBox alignment="CENTER">
+        <VBox spacing="2">
+            <Label styleClass="form-label" text="Security Answer"/>
+            <TextField fx:id="securityAnswerField" promptText="Enter your answer..." 
+                      styleClass="auth-field"/>
+        </VBox>
+
+        <Region VBox.vgrow="ALWAYS" minHeight="30"/>
+
+        <Button fx:id="createButton" text="Create Account" styleClass="blue-button" 
+                onAction="#createNewAccount" maxWidth="Infinity">
+            <VBox.margin><Insets bottom="8.0" /></VBox.margin>
+        </Button>
+
+        <HBox alignment="CENTER" spacing="5">
             <Text text="Already have an account?"/>
-            <Hyperlink fx:id="loginLink" text=" Log in"/>
+            <Hyperlink fx:id="loginLink" text="Log in"/>
+            <VBox.margin><Insets bottom="15.0" /></VBox.margin>
         </HBox>
     </VBox>
 
-    <!-- Right Panel: Illustration -->
-    <VBox alignment="CENTER" HBox.hgrow="ALWAYS" style="-fx-background-color: #6c63ff;">
-        <ImageView fitHeight="400.0" fitWidth="340.0" pickOnBounds="true" preserveRatio="true">
-            <image>
-                <Image url="@images/signup.png"/>
-            </image>
+    <VBox alignment="CENTER" style="-fx-background-color: #6c63ff;" HBox.hgrow="ALWAYS">
+        <ImageView fitHeight="513.0" fitWidth="375.0" pickOnBounds="true" preserveRatio="true">
+            <Image url="@images/signup.png"/>
         </ImageView>
     </VBox>
 </HBox>

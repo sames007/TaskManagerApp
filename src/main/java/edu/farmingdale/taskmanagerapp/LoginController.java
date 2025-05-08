@@ -7,21 +7,15 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-
 import javafx.stage.Stage;
-
-import java.io.IOException;
-import java.util.Objects;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Objects;
 
 /**
  * Controller for the Login screen.
- * <p>
- * Handles user input for logging in, navigation to the sign-up screen,
- * and showing forgotten password alert.
- * </p>
  */
 public class LoginController {
 
@@ -29,7 +23,7 @@ public class LoginController {
     private TextField emailTextField;
 
     @FXML
-    private TextField passwordTextField;
+    private PasswordField passwordTextField;
 
     @FXML
     private Button loginButton;
@@ -44,25 +38,23 @@ public class LoginController {
 
     /**
      * Initializes the controller.
-     * Binds link actions such as register and forgot password.
      */
     @FXML
     public void initialize() {
-        // Set behavior for "Register here" link
-        if (registerLink != null) {
-            registerLink.setOnAction(e -> openSignUpScreen());
-        }
-
-        // Set behavior for "Forgot your password?" link
         if (forgotPasswordLink != null) {
-            forgotPasswordLink.setOnAction(e -> {
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Forgot Password");
-                alert.setHeaderText("Password Recovery");
-                alert.setContentText("Please contact support or check your email for password recovery.");
-                alert.showAndWait();
-            });
+            forgotPasswordLink.setOnAction(e -> handleForgotPassword());
         }
+    }
+
+    /**
+     * Handles the forgot password functionality
+     */
+    private void handleForgotPassword() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Forgot Password");
+        alert.setHeaderText("Password Recovery");
+        alert.setContentText("Please contact support or check your email for password recovery.");
+        alert.showAndWait();
     }
 
     /**
@@ -75,7 +67,7 @@ public class LoginController {
     }
 
     /**
-     * Handles the Log In button.
+     * Handles the Log In button click.
      * Validates credentials and opens the main dashboard if successful.
      *
      * @param actionEvent the button click event
@@ -86,68 +78,93 @@ public class LoginController {
             String email = emailTextField.getText().trim();
             String password = passwordTextField.getText().trim();
 
-            if (email.isEmpty() || password.isEmpty()) {
-                mainController.showAlert("Please enter both email and password.");
+            if (!validateInputs(email, password)) {
                 return;
             }
 
-            UserSession user = new UserSession("", email, password, "", "");
-            UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
-
-            if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() ||
-                    !authenticatedUser.getPassword().equals(password)) {
-                mainController.showAlert("Login failed. Please check your credentials.");
+            UserSession authenticatedUser = authenticateUser(email, password);
+            if (authenticatedUser == null) {
                 return;
-
             }
 
-            // Set current user and transition to main view
-            mainController.setCurrentUser(authenticatedUser);
-            Stage stage = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
-
-            FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
-            Parent mainRoot = mainLoader.load();
-
-            TaskManagerController controller = mainLoader.getController();
-            controller.setDatabaseManager(mainController.getDbManager());
-            controller.setCurrentUser(authenticatedUser);
-
-            Scene mainScene = new Scene(mainRoot, stage.getScene().getWidth(), stage.getScene().getHeight());
-            mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
-            mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm());
-
-            stage.setTitle("Task Manager");
-            stage.setScene(mainScene);
+            openMainDashboard(actionEvent, authenticatedUser);
+            
         } catch (Exception e) {
-            e.printStackTrace();
-            mainController.showAlert("Login error: " + e.getMessage());
-        }
-    }
-
-    @FXML
-    private void displayForgotPassword() {
-        try {
-            FXMLLoader forgotLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/ForgotPasswordView.fxml"));
-            if (forgotLoader.getLocation() == null) {
-                throw new IOException("Cannot Find FXML file: ForgotPasswordView.fxml");
-            }
-            Parent forgotRoot = forgotLoader.load();
-            Stage forgotStage = new Stage();
-            forgotStage.setTitle("Forgot Password");
-            Scene forgotScene = new Scene(forgotRoot);
-            forgotStage.setScene(forgotScene);
-            System.out.println("forgot password view loaded");
-            forgotStage.show();
-        } catch (IOException e) {
-            System.err.println("Error Opening Forgot Password Window: " + e.getMessage());
-            e.printStackTrace();
+            handleLoginError(e);
         }
     }
 
     /**
-     * Opens the Sign-Up screen in the same window.
+     * Validates the user input fields
      */
-    private void openSignUpScreen() {
+    private boolean validateInputs(@NotNull String email, String password) {
+        if (email.isEmpty() || password.isEmpty()) {
+            mainController.showAlert("Please enter both email and password.");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Authenticates the user against the database
+     */
+    @Nullable
+    private UserSession authenticateUser(String email, String password) {
+        UserSession user = new UserSession("", email, password, "", "");
+        UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
+
+        if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() ||
+                !authenticatedUser.getPassword().equals(password)) {
+            mainController.showAlert("Login failed. Please check your credentials.");
+            return null;
+        }
+        return authenticatedUser;
+    }
+
+    /**
+     * Opens the main dashboard after successful login
+     */
+    private void openMainDashboard(@NotNull ActionEvent actionEvent, UserSession authenticatedUser) throws IOException {
+        mainController.setCurrentUser(authenticatedUser);
+        Stage stage = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
+
+        FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
+        Parent mainRoot = mainLoader.load();
+
+        TaskManagerController controller = mainLoader.getController();
+        controller.setDatabaseManager(mainController.getDbManager());
+        controller.setCurrentUser(authenticatedUser);
+
+        Scene mainScene = new Scene(mainRoot, stage.getScene().getWidth(), stage.getScene().getHeight());
+        loadStylesheets(mainScene);
+
+        stage.setTitle("Task Manager");
+        stage.setScene(mainScene);
+    }
+
+    /**
+     * Loads the required stylesheets for the scene
+     */
+    private void loadStylesheets(@NotNull Scene scene) {
+        scene.getStylesheets().addAll(
+            Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm(),
+            Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm()
+        );
+    }
+
+    /**
+     * Handles any errors that occur during login
+     */
+    private void handleLoginError(@NotNull Exception e) {
+        e.printStackTrace();
+        mainController.showAlert("Login error: " + e.getMessage());
+    }
+
+    /**
+     * Opens the Sign-Up screen when the register link is clicked.
+     */
+    @FXML
+    public void openSignUpScreen() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SignUpView.fxml"));
             Parent root = loader.load();
@@ -158,8 +175,11 @@ public class LoginController {
             Stage stage = (Stage) emailTextField.getScene().getWindow();
             Scene scene = new Scene(root, stage.getScene().getWidth(), stage.getScene().getHeight());
             scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+            
+            stage.setTitle("Sign Up");
             stage.setScene(scene);
         } catch (IOException e) {
+            e.printStackTrace();
             mainController.showAlert("Failed to open Sign Up screen: " + e.getMessage());
         }
     }
