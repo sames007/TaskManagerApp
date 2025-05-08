@@ -145,7 +145,7 @@ public class LoginController {
     }
 
     /**
-     * Opens the Sign Up screen in the same window.
+     * Opens the Sign-Up screen in the same window.
      */
     private void openSignUpScreen() {
         try {

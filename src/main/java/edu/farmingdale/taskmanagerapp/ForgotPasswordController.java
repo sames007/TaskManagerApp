@@ -19,6 +19,9 @@ public class ForgotPasswordController {
 
     private DatabaseManager dbManager;
 
+    /**
+     * Initializes the controller.
+     */
     @FXML
     public void initialize(){
 
@@ -39,6 +42,10 @@ public class ForgotPasswordController {
         confirmField.textProperty().addListener(passwordMatchListener);
     }
 
+    /**
+     * Shows an alert with the provided message.
+     * @param message the message to show
+     */
     private void showAlert(String message){
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Alert");
@@ -47,6 +54,9 @@ public class ForgotPasswordController {
         alert.showAndWait();
     }
 
+    /**
+     * Handles the retrieve question button action.
+     */
     @FXML
     public void retrieveQuestion(){
         String email = emailField.getText();
@@ -64,6 +74,9 @@ public class ForgotPasswordController {
         securityQuestionText.setText(user.getSecurityQuestion());
     }
 
+    /**
+     * Handles the verify button action.
+     */
     @FXML
     public void verifyAnswer(){
         String email = emailField.getText();
@@ -96,6 +109,9 @@ public class ForgotPasswordController {
 
     }
 
+    /**
+     * Handles the confirm button action.
+     */
     @FXML
     public void confirmPassword(){
         String email = emailField.getText();
@@ -122,12 +138,12 @@ public class ForgotPasswordController {
         }
     }
 
-
+    /**
+     * Handles the back button action.
+     */
     @FXML
     public void handleBack() {
         Stage stage = (Stage) backButton.getScene().getWindow();
         stage.close();
     }
-
-
 }

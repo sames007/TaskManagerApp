@@ -7,6 +7,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -105,7 +107,9 @@ public class ChatBoxController {
      * @param userInput Uses Input From User To Create JSON Payload
      * @return JSON Payload
      */
-    private static String getString(String userInput) {
+    @NotNull
+    @Contract(pure = true)
+    private static String getString(@NotNull String userInput) {
         String safeInput = userInput.replace("\"", "\\\"");
 
         // Build JSON payload with system_instruction + user content
@@ -136,7 +140,8 @@ public class ChatBoxController {
      * @param responseBody Where the AI Response Is Stored
      * @return AI Response
      */
-    private String parseResponse(String responseBody) {
+    @NotNull
+    private String parseResponse(@NotNull String responseBody) {
         int index = responseBody.indexOf("\"text\":");
         if (index != -1) {
             int start = responseBody.indexOf("\"", index + 7) + 1;
@@ -152,9 +157,11 @@ public class ChatBoxController {
     // into actual newline characters for better readability.
     /**
      * @param response Where the AI Response Is Stored
-     * @return AI Response in proper format
+     * @return AI Response in the proper format
      */
-    private String formatAIResponse(String response) {
+    @NotNull
+    @Contract(pure = true)
+    private String formatAIResponse(@NotNull String response) {
         return response.replace("\\n", "\n");
     }
 }

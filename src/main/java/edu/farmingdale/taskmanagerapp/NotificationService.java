@@ -11,6 +11,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -18,6 +19,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Notification For Task Due Soon
+ */
 public class NotificationService {
     private static final int NOTIFICATION_DURATION = 5000; // 5 seconds
     private static final int CHECK_INTERVAL = 60000; // Check every minute
@@ -25,6 +29,10 @@ public class NotificationService {
     private static final List<Stage> activeNotifications = new ArrayList<>();
     private static Timeline notificationCheckTimeline;
 
+    /**
+     * Starts the notification service.
+     * @param controller the TaskManagerController
+     */
     public static void startNotificationService(TaskManagerController controller) {
         if (notificationCheckTimeline != null) {
             notificationCheckTimeline.stop();
@@ -37,6 +45,9 @@ public class NotificationService {
         notificationCheckTimeline.play();
     }
 
+    /**
+     * @param controller the TaskManagerController
+     */
     public static void checkDueTasks(TaskManagerController controller) {
         Platform.runLater(() -> {
             for (Task task : controller.getTasks()) {
@@ -47,7 +58,13 @@ public class NotificationService {
         });
     }
 
-    public static boolean shouldNotifyTask(Task task) {
+    /**
+     * Determines whether a notification should be sent for a given task based on its status
+     * and its proximity to the due date and time
+     * @param task the task to evaluate for notification. The task is checked for its status
+     * @return true if the task is due soon and its status is not "Completed";
+     */
+    public static boolean shouldNotifyTask(@NotNull Task task) {
         if (task.getStatus().equals("Completed")) {
             return false;
         }
@@ -60,6 +77,10 @@ public class NotificationService {
         return hoursUntilDue > 0 && hoursUntilDue <= DUE_SOON_THRESHOLD;
     }
 
+    /**
+     * Shows a notification for a given task.
+     * @param task the task to notify about
+     */
     public static void showNotification(Task task) {
         Platform.runLater(() -> {
             Stage notificationStage = new Stage(StageStyle.TRANSPARENT);
@@ -119,6 +140,9 @@ public class NotificationService {
         });
     }
 
+    /**
+     * Stops the notification service.
+     */
     public static void stopNotificationService() {
         if (notificationCheckTimeline != null) {
             notificationCheckTimeline.stop();

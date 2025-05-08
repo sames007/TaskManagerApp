@@ -34,7 +34,6 @@ public class AI_Helper {
     }
 
     // Public method to get the API key from the loaded properties
-
     /**
      * @return the API key as a String
      */

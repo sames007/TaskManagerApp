@@ -62,7 +62,7 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When a file enters drop zone, update style and label text
+        // When a file enters the drop zone, update style and label text
         dropZone.setOnDragEntered(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 dropZone.getStyleClass().add("drop-zone-hover");
@@ -167,12 +167,12 @@ public class FileProcessorController {
                         priority
                 );
 
-                // Add task to TaskManagerController
+                // Add the task to TaskManagerController
                 if (taskManagerController != null) {
                     taskManagerController.addImportedTask(task);
                 }
 
-                // Save task to the database if available
+                // Save the task to the database if available
                 if (dbManager != null) {
                     dbManager.addTask(task);
                 }

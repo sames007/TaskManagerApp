@@ -223,7 +223,7 @@ public class DatabaseManager {
     /**
      * @param task The task to add
      */
-    public void addTask(Task task) {
+    public void addTask(@NotNull Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Tasks (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             stmt.setString(1, task.getDescription());
             stmt.setDate(2, Date.valueOf(task.getDueDate()));
@@ -258,7 +258,7 @@ public class DatabaseManager {
     /**
      * @param task The task to update
      */
-    public void updateTask(Task task) {
+    public void updateTask(@NotNull Task task) {
         try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ? WHERE TaskID = ?")) {
             stmt.setString(1, task.getDescription());
             stmt.setDate(2, Date.valueOf(task.getDueDate()));

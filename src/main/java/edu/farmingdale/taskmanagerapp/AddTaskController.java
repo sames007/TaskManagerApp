@@ -4,6 +4,8 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import org.jetbrains.annotations.NotNull;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -31,12 +33,12 @@ public class AddTaskController {
     @FXML
     private Button submitTaskButton; // Reference to the button
 
+    // Reference to the main controller
     private TaskManagerController mainController; // Reference to the main controller
     private Task taskToEdit = null;
     private boolean editMode = false;
 
     // Setter to inject the main controller
-
     /**
      * @param mainController the main controller to set
      */
@@ -244,8 +246,8 @@ public class AddTaskController {
      * @param category the category the task belongs to
      * @return true if all inputs are valid, false otherwise
      */
-    private boolean isValid(String description, LocalDate dueDate, Integer hour, Integer minute,
-    String amPm, String priority, String category) {
+    private boolean isValid(@NotNull String description, LocalDate dueDate, Integer hour, Integer minute,
+                            String amPm, String priority, String category) {
         if (description.isEmpty() || dueDate == null || hour == null || minute == null
            || amPm == null || priority == null || category == null) {
             mainController.showAlert("Please Fill All Required Fields (Description, Due Date, Time, Priority, Category)");

@@ -145,5 +145,3 @@ public class UserSession {
         this.profilePicturePath = null;
         }
     }
-
-

@@ -33,6 +33,8 @@ import java.util.Objects;
 import java.util.List;
 import java.util.ArrayList;
 import javafx.scene.image.ImageView;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Controller for managing tasks. It handles adding, editing,
@@ -62,7 +64,6 @@ public class TaskManagerController extends Application {
     @FXML private Circle notificationIndicator;
     @FXML private ToggleButton themeToggleBtn;
 
-
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
     private DatabaseManager dbManager;
@@ -75,7 +76,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Setter for DatabaseManager instance.
-     *
      * @param dbManager the DatabaseManager to use for DB operations.
      */
     public void setDatabaseManager(DatabaseManager dbManager) {
@@ -321,19 +321,16 @@ public class TaskManagerController extends Application {
 
     /**
      * Exports the current list of tasks to a CSV file.
-     *
      * This method opens a file chooser dialog allowing the user to specify the
      * location and name of the output CSV file. It writes each task as a line in
      * the file, including the following fields:
      * Description, DueDate, DueTime, Priority, Status, Category, and Reminder.
-     *
      * Fields that contain commas or quotes are properly escaped to ensure CSV
      * format compatibility. If the export is successful, a confirmation alert
      * is shown. If an error occurs (e.g., I/O error), an alert displays the
      * corresponding error message.
-     *
      * Example output line:
-     * "Finish report",2025-05-10,14:30,HIGH,In Progress,Work,2025-05-08
+     * "Finish report",2025-05-10,14:30,HIGH, In Progress, Work,2025-05-08
      */
     @FXML
     private void exportCsv() {
@@ -363,7 +360,11 @@ public class TaskManagerController extends Application {
         }
     }
 
-
+    /**
+     * @param input the string to escape
+     * @return the escaped string
+     */
+    @NotNull
     private String escapeCsv(String input) {
         if (input == null) return "";
         if (input.contains(",") || input.contains("\"")) {
@@ -374,21 +375,20 @@ public class TaskManagerController extends Application {
 
     /**
      * Imports tasks from a user-selected CSV file and adds them to the task list.
-     *
      * This method opens a file chooser dialog to let the user select a CSV file.
      * It reads the file line by line, skipping the first line (assumed header),
      * and parses each line into a Task object using comma-separated fields.
-     *
      * Expected field order:
      * Description, DueDate (yyyy-MM-dd), DueTime (HH:mm), Priority, Status, Category, [Optional Reminder]
-     *
      * - Fields with commas or quotes are safely parsed using a custom parser.
      * - Lines with invalid formats (e.g., bad dates or missing fields) are skipped
      *   and reported in the console but do not stop the entire import.
-     *
-     * Shows a success alert when finished, and logs how many tasks were imported.
+     * Shows a success alert when the import is finished and logs how many tasks were imported.
      */
 
+    /**
+     * Imports tasks from a user-selected CSV file and adds them to the task list.
+     */
     @FXML
     private void importCsv() {
         FileChooser fileChooser = new FileChooser();
@@ -454,7 +454,16 @@ public class TaskManagerController extends Application {
             }
         }
     }
-    private String[] parseCsvLine(String line) {
+
+    /**
+     * Parses a single line of a CSV file into an array of string tokens.
+     * Handles fields enclosed in double quotes to ensure proper parsing of
+     * values containing commas or other special characters.
+     * @param line the CSV line to parse; must not be null
+     * @return an array of string tokens representing the fields in the CSV line
+     */
+    @NotNull
+    private String[] parseCsvLine(@NotNull String line) {
         List<String> tokens = new ArrayList<>();
         boolean insideQuote = false;
         StringBuilder sb = new StringBuilder();
@@ -471,9 +480,6 @@ public class TaskManagerController extends Application {
         tokens.add(sb.toString().trim()); // add last token
         return tokens.toArray(new String[0]);
     }
-
-
-
 
     /**
      * Loads tasks from the database into the application's task list and refreshes the UI components.
@@ -830,10 +836,10 @@ public class TaskManagerController extends Application {
             showAlert("Could Not Open Edit Task Window - Check FXML File");
         }
     }
+
     /**
      * Adds a new task received from the dialog, updates DB, and refreshes UI.
      * This method is called by AddTaskDialogController.
-     *
      * @param task The new task created in the dialog.
      */
     public void addNewTaskFrom(Task task) {
@@ -863,7 +869,6 @@ public class TaskManagerController extends Application {
 
     /**
      * Adds an imported task (from a file) to the list and refreshes the table.
-     *
      * @param task the task to add
      */
     public void addImportedTask(Task task) {
@@ -939,7 +944,7 @@ public class TaskManagerController extends Application {
     }
 
     /**
-     * Opens the Sign Up window when the user clicks the "Sign Up" button.
+     * Opens the Sign-Up window when the user clicks the "Sign Up" button.
      */
     @FXML
     private void displaySignUp() {
@@ -1157,6 +1162,8 @@ public class TaskManagerController extends Application {
      * @param priority the priority of the task
      * @return Priority color string
      */
+    @NotNull
+    @Contract(pure = true)
     private String getPriorityColor(String priority) {
         if (priority == null) return "-fx-fill: #95a5a6;"; // Default gray
 
@@ -1270,11 +1277,11 @@ public class TaskManagerController extends Application {
     }
 
     /**
-     * Applying selected theme into given scene.
+     * Applying selected theme into the given scene.
      * @param scene The scene where the theme is applied.
      * @param darkMode appears dark, otherwise false.
      */
-    private void applyTheme(Scene scene, boolean darkMode) {
+    private void applyTheme(@NotNull Scene scene, boolean darkMode) {
         String lightTheme = getClass().getResource(light_Theme).toExternalForm();
         String darkTheme = getClass().getResource(dark_Theme).toExternalForm();
         scene.getStylesheets().remove(lightTheme);
