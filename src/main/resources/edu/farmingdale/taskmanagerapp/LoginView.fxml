@@ -12,7 +12,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
+
 <HBox prefHeight="500" prefWidth="800" spacing="0" style="-fx-background-color: #ffffff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.LoginController">
+
 
     <!-- Left: Form -->
     <VBox alignment="CENTER" spacing="15" styleClass="login-pane" HBox.hgrow="ALWAYS">
@@ -22,16 +24,20 @@
         <Text styleClass="title-text" text="Welcome back!" />
         <Text styleClass="subtitle-text" text="Manage your tasks and stay organized with ease." />
 
-        <Label styleClass="form-label" text="Email" />
-        <TextField fx:id="emailTextField" promptText="Enter your mail address" styleClass="auth-field" />
+
+            <Label styleClass="form-label" text="Username" />
+            <TextField fx:id="emailTextField" promptText="Enter your username" styleClass="auth-field" />
+
 
         <Label styleClass="form-label" text="Password" />
         <PasswordField fx:id="passwordTextField" promptText="Enter password" styleClass="auth-field" />
+
 
         <Hyperlink fx:id="forgotPasswordLink" text="Forgot your password?">
          <VBox.margin>
             <Insets left="85.0" />
          </VBox.margin></Hyperlink>
+
 
         <Button fx:id="loginButton" onAction="#login" styleClass="blue-button" text="Log In" />
 

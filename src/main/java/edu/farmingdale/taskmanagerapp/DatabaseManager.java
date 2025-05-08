@@ -42,9 +42,9 @@ public class DatabaseManager {
                 props.setProperty("useSSL", "true");
                 props.setProperty("autoReconnect", "true");
                 props.setProperty("maxReconnects", "3");
-                
+
                 conn = DriverManager.getConnection(DB_URL, props);
-                
+
                 // Check if the ProfilePicturePath column exists and add it if it doesn't
                 try (Statement stmt = conn.createStatement()) {
                     // Check if a column exists
@@ -58,7 +58,7 @@ public class DatabaseManager {
                 } catch (SQLException e) {
                     LOGGER.log(Level.WARNING, "Error checking/adding ProfilePicturePath column: " + e.getMessage());
                 }
-                
+
                 return;
             } catch (SQLException e) {
                 retries++;
@@ -126,57 +126,97 @@ public class DatabaseManager {
      * @param s The user session to register
      */
     public void registerUser(UserSession s) {
-        if (s == null || s.getUserName() == null || s.getPassword() == null || s.getEmail() == null) {
-            throw new IllegalArgumentException("Invalid user session data");
-        }
+        try {
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            Statement statement = conn.createStatement();
+            String sql = "INSERT INTO users (UserName, PassWord, Email, SecurityQuestion, SecurityAnswer) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+            preparedStatement.setString(1, s.getUserName());
+            preparedStatement.setString(2, s.getPassword());
+            preparedStatement.setString(3, s.getEmail());
+            preparedStatement.setString(4, s.getSecurityQuestion());
+            preparedStatement.setString(5, s.getSecurityAnswer());
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                 "INSERT INTO users (UserName, PassWord, Email, ProfilePicturePath) VALUES (?, ?, ?, ?)")) {
-            
-            stmt.setString(1, s.getUserName());
-            stmt.setString(2, s.getPassword());
-            stmt.setString(3, s.getEmail());
-            stmt.setString(4, "/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
-            
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected == 0) {
-                throw new SQLException("Creating user failed, no rows affected.");
+            int row = preparedStatement.executeUpdate();
+            statement.close();
+            conn.close();
+
+        } catch (Exception e) {
+
+        }
+    }
+
+    /**
+     * @param username The username of the user
+     * @return The user session
+     */
+    public UserSession getAccount(String username) {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
+                    return s;
+                } else {
+                    return null;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error registering user: " + e.getMessage());
-            throw new RuntimeException("Failed to register user", e);
+            throw new RuntimeException(e);
         }
+
     }
 
     /**
      * @param email The email of the user
      * @return The user session
      */
-    public UserSession getAccount(String email) {
+    public UserSession getAccountByEmail(String email) {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
             stmt.setString(1, email);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    UserSession s = new UserSession(
-                        rs.getString("UserName"),
-                        rs.getString("Email"),
-                        rs.getString("PassWord")
-                    );
-                    s.setUserID(rs.getInt("UserID"));
-                    try {
-                        s.setProfilePicturePath(rs.getString("ProfilePicturePath"));
-                    } catch (SQLException e) {
-                        // If the column doesn't exist, set the default profile picture
-                        s.setProfilePicturePath("/edu/farmingdale/taskmanagerapp/images/profilePicture.png");
-                    }
+                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
                     return s;
                 } else {
                     return null;
                 }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+
+    }
+
+
+    /**
+     * Updates password in database
+     * @param email
+     * @param newPassword
+     * @return boolean
+     */
+    public boolean updatePassword(String email, String newPassword) {
+        try {
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            String sql = "UPDATE users SET Password = ? WHERE Email = ?";
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+            preparedStatement.setString(1, newPassword);
+            preparedStatement.setString(2, email);
+
+            int rows = preparedStatement.executeUpdate();
+            preparedStatement.close();
+            conn.close();
+
+            if (rows == 0) {
+                throw new RuntimeException("No user found with that email!");
+            }
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("Error updating password: " + e.getMessage());
         }
     }
 

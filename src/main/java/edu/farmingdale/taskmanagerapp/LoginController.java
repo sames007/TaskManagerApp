@@ -7,7 +7,11 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+
 import javafx.stage.Stage;
+
+import java.io.IOException;
+import java.util.Objects;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -87,13 +91,14 @@ public class LoginController {
                 return;
             }
 
-            UserSession attemptedLogin = new UserSession("", email, password);
-            UserSession authenticatedUser = mainController.getDbManager().getAccount(attemptedLogin.getEmail());
+            UserSession user = new UserSession("", email, password, "", "");
+            UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
 
             if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() ||
                     !authenticatedUser.getPassword().equals(password)) {
                 mainController.showAlert("Login failed. Please check your credentials.");
                 return;
+
             }
 
             // Set current user and transition to main view
@@ -116,6 +121,26 @@ public class LoginController {
         } catch (Exception e) {
             e.printStackTrace();
             mainController.showAlert("Login error: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void displayForgotPassword() {
+        try {
+            FXMLLoader forgotLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/ForgotPasswordView.fxml"));
+            if (forgotLoader.getLocation() == null) {
+                throw new IOException("Cannot Find FXML file: ForgotPasswordView.fxml");
+            }
+            Parent forgotRoot = forgotLoader.load();
+            Stage forgotStage = new Stage();
+            forgotStage.setTitle("Forgot Password");
+            Scene forgotScene = new Scene(forgotRoot);
+            forgotStage.setScene(forgotScene);
+            System.out.println("forgot password view loaded");
+            forgotStage.show();
+        } catch (IOException e) {
+            System.err.println("Error Opening Forgot Password Window: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

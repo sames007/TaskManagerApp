@@ -7,6 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
@@ -21,25 +22,36 @@ import java.util.Objects;
 public class SignUpController {
 
     @FXML
-    private TextField usernameField, emailField, passwordField;
 
+    private TextField usernameField, emailField, passwordField, securityAnswerField;
     @FXML
     private Button createButton, backButton;
-
+    @FXML
+    private ComboBox<String> securityQuestionBox;
+    private DatabaseManager dm;
+    
     @FXML
     private Hyperlink loginLink;
+
 
     private TaskManagerController mainController;
 
     /**
      * Initializes the controller and binds the login link behavior.
      */
-    @FXML
+
     public void initialize() {
-        if (loginLink != null) {
+        securityQuestionBox.getItems().addAll(
+                "What is the name of your first pet?",
+                "What is the name of the street you grew up on?",
+                "What is the name of your childhood best friend?",
+                "What is your mother's maiden name?",
+                "What was your favorite book as a child?"
+        );
+    if (loginLink != null) {
             loginLink.setOnAction(e -> goToLogin());
         }
-    }
+    
 
     /**
      * Injects the main controller for database access.
@@ -56,17 +68,22 @@ public class SignUpController {
     @FXML
     public void createNewAccount(ActionEvent actionEvent) {
         try {
-            String username = usernameField.getText().trim();
-            String email = emailField.getText().trim();
-            String password = passwordField.getText().trim();
 
-            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            String username = usernameField.getText();
+            String email = emailField.getText();
+            String password = passwordField.getText();
+            String selectedQuestion = securityQuestionBox.getValue();
+            String securityAnswer = securityAnswerField.getText();
+
+            if (username.isEmpty() || email.isEmpty() || password.isEmpty() || securityAnswer.isEmpty()) {
                 mainController.showAlert("Please fill in all fields");
                 return;
             }
 
-            UserSession newUser = new UserSession(username, email, password);
-            UserSession existingUser = mainController.getDbManager().getAccount(email);
+
+            UserSession newUser = new UserSession(usernameField.getText(), emailField.getText(), passwordField.getText(), selectedQuestion, securityAnswer);
+            UserSession existingUser = mainController.getDbManager().getAccount(newUser.getEmail());
+
 
             if (existingUser == null) {
                 mainController.getDbManager().registerUser(newUser);
