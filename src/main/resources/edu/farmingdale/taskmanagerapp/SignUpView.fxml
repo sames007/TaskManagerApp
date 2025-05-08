@@ -1,72 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Hyperlink?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
+<HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="edu.farmingdale.taskmanagerapp.SignUpController"
+      prefHeight="500.0" prefWidth="800.0" spacing="0" style="-fx-background-color: white;"
+      stylesheets="@styling/styles.css">
 
-<BorderPane prefHeight="500" prefWidth="800" style="-fx-background-color: #6c63ff;" stylesheets="@styling/styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.SignUpController">
+    <!-- Left Panel: Form -->
+    <VBox alignment="CENTER_LEFT" spacing="15" HBox.hgrow="ALWAYS" styleClass="login-pane">
+        <padding><Insets top="50" bottom="50" left="50" right="50"/></padding>
 
+        <ImageView fx:id="logoImage" fitHeight="40" fitWidth="40"/>
+        <Text styleClass="title-text" text="Create an Account"/>
+        <Text styleClass="subtitle-text" text="Sign up to manage your tasks seamlessly."/>
 
-    <!-- Left side: Form -->
-    <left>
-        <VBox alignment="CENTER_LEFT" spacing="15" styleClass="login-pane">
-            <padding><Insets bottom="50" left="50" right="50" top="50" /></padding>
+        <Label styleClass="form-label" text="Username"/>
+        <TextField fx:id="usernameField" promptText="Create username..." styleClass="auth-field"/>
 
+        <Label styleClass="form-label" text="Email"/>
+        <TextField fx:id="emailField" promptText="Enter email..." styleClass="auth-field"/>
 
-            <ImageView fx:id="logoImage" fitHeight="40" fitWidth="40" />
-            <Text styleClass="title-text" text="Create an Account" />
-            <Text styleClass="subtitle-text" text="Sign up to manage your tasks seamlessly." />
+        <Label styleClass="form-label" text="Password"/>
+        <PasswordField fx:id="passwordField" promptText="Enter password..." styleClass="auth-field"/>
 
+        <Button fx:id="createButton" text="Create Account" styleClass="blue-button" onAction="#createNewAccount"/>
 
-            <Label styleClass="form-label" text="Username" />
-            <TextField fx:id="usernameField" promptText="Create username..." styleClass="auth-field" />
+        <HBox alignment="CENTER">
+            <Text text="Already have an account?"/>
+            <Hyperlink fx:id="loginLink" text=" Log in"/>
+        </HBox>
+    </VBox>
 
-
-            <Label styleClass="form-label" text="Email" />
-            <TextField fx:id="emailField" promptText="Enter email..." styleClass="auth-field" />
-
-
-            <Label styleClass="form-label" text="Password" />
-            <PasswordField fx:id="passwordField" promptText="Enter password..." styleClass="auth-field" />
-
-
-            <Button fx:id="createButton" onAction="#createNewAccount" styleClass="blue-button" text="Create Account" />
-
-
-            <HBox alignment="CENTER">
-                <Text text="Already have an account?" />
-                <Hyperlink text="Log in" />
-            </HBox>
-
-
-            <Button fx:id="backButton" onAction="#handleBack" styleClass="outline-button" text="Back" />
-        </VBox>
-    </left>
-
-
-    <!-- Right side: Image -->
-    <right>
-        <Pane styleClass="login-right-pane">
-            <children>
-                <ImageView fitHeight="401.0" fitWidth="339.0" layoutX="20.0" layoutY="103.0" preserveRatio="false">
-                    <image>
-                        <Image url="@images/signup.png" />
-                    </image>
-                </ImageView>
-            </children>
-        </Pane>
-    </right>
-</BorderPane>
-
+    <!-- Right Panel: Illustration -->
+    <VBox alignment="CENTER" HBox.hgrow="ALWAYS" style="-fx-background-color: #6c63ff;">
+        <ImageView fitHeight="400.0" fitWidth="340.0" pickOnBounds="true" preserveRatio="true">
+            <image>
+                <Image url="@images/signup.png"/>
+            </image>
+        </ImageView>
+    </VBox>
+</HBox>
