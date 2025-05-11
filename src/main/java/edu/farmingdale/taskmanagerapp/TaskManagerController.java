@@ -21,6 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 import jfxtras.scene.control.agenda.Agenda;
 import jfxtras.scene.control.agenda.Agenda.AppointmentImplLocal;
 
@@ -32,6 +33,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
+
 import javafx.scene.image.ImageView;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -63,6 +67,7 @@ public class TaskManagerController extends Application {
     @FXML private ImageView profilePicture;
     @FXML private Circle notificationIndicator;
     @FXML private ToggleButton themeToggleBtn;
+    @FXML private VBox mainVBox;
 
     private Agenda agenda; // JFXtras Agenda control
     private ObservableList<Task> tasks = FXCollections.observableArrayList();
@@ -96,6 +101,56 @@ public class TaskManagerController extends Application {
      */
     @FXML
     public void initialize() {
+        Preferences prefs = Preferences.userNodeForPackage(getClass());
+
+        // Restore & save column widths
+        for (int i = 0; i < taskTable.getColumns().size(); i++) {
+            final int idx = i;
+            TableColumn<Task,?> col = taskTable.getColumns().get(i);
+            double savedWidth = prefs.getDouble("colWidth" + idx, col.getPrefWidth());
+            col.setPrefWidth(savedWidth);
+            col.widthProperty().addListener((obs, oldW, newW) ->
+                    prefs.putDouble("colWidth" + idx, newW.doubleValue())
+            );
+        }
+
+        // Capture the built-in sort policy before overriding
+        Callback<TableView<Task>,Boolean> defaultSortPolicy = taskTable.getSortPolicy();
+
+        // Restore saved sort order
+        String savedOrder = prefs.get("tableSortOrder", "");
+        if (!savedOrder.isBlank()) {
+            for (String idxStr : savedOrder.split(",")) {
+                int idx = Integer.parseInt(idxStr);
+                if (idx < taskTable.getColumns().size()) {
+                    taskTable.getSortOrder().add(taskTable.getColumns().get(idx));
+                }
+            }
+        }
+
+        // Override sort policy: save prefs, then delegate to default
+        taskTable.setSortPolicy(tv -> {
+            // persist new sort order
+            String order = tv.getSortOrder().stream()
+                    .map(tv.getColumns()::indexOf)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+            prefs.put("tableSortOrder", order);
+
+            // delegate back to JavaFX's original sort logic
+            return defaultSortPolicy.call(tv);
+        });
+
+        // Apply constrained-resize to columns
+        taskTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // Restore & save center-VBox height
+        double savedHeight = prefs.getDouble("mainVBoxHeight", mainVBox.getPrefHeight());
+        mainVBox.setPrefHeight(savedHeight);
+        mainVBox.heightProperty().addListener((obs, oldH, newH) ->
+                prefs.putDouble("mainVBoxHeight", newH.doubleValue())
+        );
+
         // Initialize profile manager
         profileManager = new ProfileManager(this);
         if (profilePicture != null && themeToggleBtn != null) {
