@@ -5,7 +5,7 @@
     -fx-font-family: "SF Pro Text", "SF Pro", system-ui, sans-serif;
     -fx-background-color: #070A1C;
     -fx-base: #070A1C;
-    -fx-text-fill: #D6E4F0;
+    -fx-text-fill: #FFFFFF;
 }
 
 /* ============================ */
@@ -21,7 +21,7 @@
     -fx-min-height: 36px;
     -fx-cursor: hand;
     -fx-background-color: #102B4C;
-    -fx-text-fill: #D6E4F0;
+    -fx-text-fill: #FFFFFF;
     -fx-border-color: transparent;
     -fx-border-width: 1px;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 4, 0, 0, 2);
@@ -40,12 +40,12 @@
 .title-label {
     -fx-font-size: 1.6em;
     -fx-font-weight: bold;
-    -fx-text-fill: #D6E4F0;
+    -fx-text-fill: #FFFFFF;
 }
 .section-label {
     -fx-font-size: 1.3em;
     -fx-font-weight: 600;
-    -fx-text-fill: #A7C7E7;
+    -fx-text-fill: #FFFFFF;
 }
 
 /* ============================ */
@@ -61,7 +61,7 @@
     -fx-background-color: #0C1422;
 }
 .table-view .column-header .label {
-    -fx-text-fill: #A7C7E7;
+    -fx-text-fill: #FFFFFF;
     -fx-font-weight: 600;
     -fx-padding: 0.3em 0.5em;
 }
@@ -76,14 +76,14 @@
 }
 .table-view .table-row-cell:hover {
     -fx-background-color: #1E4C7B;
-    -fx-text-fill: #E0F0FF;
+    -fx-text-fill: #FFFFFF;
 }
 .table-view .table-row-cell:selected {
     -fx-background-color: #102B4C;
-    -fx-text-fill: #F1F8FF;
+    -fx-text-fill: #FFFFFF;
 }
 .table-view .table-row-cell .text {
-    -fx-fill: #D6E4F0;
+    -fx-fill: #FFFFFF;
 }
 
 /* ============================ */
@@ -109,7 +109,7 @@
 }
 .list-view .list-cell:selected {
     -fx-background-color: #102B4C;
-    -fx-text-fill: #E0F0FF;
+    -fx-text-fill: #FFFFFF;
 }
 
 /* ============================ */
@@ -169,6 +169,9 @@
     -fx-text-fill: #90caf9;
 }
 
+/* ============================ */
+/* Notification Button         */
+/* ============================ */
 .notification-button {
     -fx-min-width: 45px;
     -fx-min-height: 45px;
@@ -198,17 +201,17 @@
 /* ============================ */
 .auth-field {
     -fx-background-color: #101C2D;
-    -fx-text-fill: #D6E4F0;
-    -fx-border-color: #3C6EB4;
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: #FFFFFF;
     -fx-border-width: 1.5px;
     -fx-background-radius: 4;
     -fx-padding: 0.6em 0.8em;
     -fx-font-size: 0.95em;
 }
 .auth-field:focused {
-    -fx-border-color: #5B9BFF;
+    -fx-border-color: #FFFFFF;
     -fx-border-width: 2px;
-    -fx-effect: dropshadow(gaussian, rgba(60,110,180,0.2), 6, 0, 0, 1);
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 6, 0, 0, 1);
 }
 
 /* ============================ */
