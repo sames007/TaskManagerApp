@@ -1,3 +1,5 @@
+/* light-theme.css */
+
 /* --- Root Style --- */
 .root {
     -fx-font-family: "SF Pro Text", "SF Pro", system-ui, sans-serif;
@@ -5,58 +7,46 @@
 }
 
 /* ============================ */
-/* Buttons                       */
+/* Buttons                     */
 /* ============================ */
-.blue-button {
+.button, .blue-button, .ai-chat-button {
+    -fx-font-size: 0.95em;
+    -fx-font-weight: 600;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 0.6em 1.2em;
+    -fx-min-width: 130px;
+    -fx-min-height: 36px;
+    -fx-cursor: hand;
     -fx-background-color: #1E88E5;    /* primary blue */
     -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-padding: 0.5em 1em;
-    -fx-background-radius: 4;
     -fx-border-color: #1565C0;        /* dark blue border */
     -fx-border-width: 1px;
-    -fx-border-radius: 4;
 }
-.blue-button:hover {
-    -fx-background-color: derive(#1E88E5, 20%); /* lighter blue on hover */
+.button:hover, .blue-button:hover, .ai-chat-button:hover {
+    -fx-background-color: derive(#1E88E5, 20%);
 }
-
-.ai-chat-button {
-    -fx-background-color: #1E88E5;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-padding: 0.5em 1em;
-    -fx-background-radius: 4;
-    -fx-border-color: #1565C0;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4;
-}
-.ai-chat-button:hover {
-    -fx-background-color: derive(#2979FF, 20%);
-}
-
-/* Focus style for buttons */
-.blue-button:focused, .ai-chat-button:focused {
-    -fx-border-color: derive(#1E88E5, -20%); /* darker border on focus */
+.button:focused, .blue-button:focused, .ai-chat-button:focused {
+    -fx-border-color: derive(#1E88E5, -20%);
     -fx-border-width: 2px;
 }
 
 /* ============================ */
-/* Labels                        */
+/* Labels                      */
 /* ============================ */
 .title-label {
-    -fx-font-size: 1.5em;
+    -fx-font-size: 1.6em;
     -fx-font-weight: bold;
-    -fx-text-fill: #1565C0; /* dark blue for titles */
+    -fx-text-fill: #1565C0;
 }
 .section-label {
-    -fx-font-size: 1.2em;
+    -fx-font-size: 1.3em;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E88E5; /* primary blue for sections */
+    -fx-text-fill: #1E88E5;
 }
 
 /* ============================ */
-/* TableView                     */
+/* TableView                   */
 /* ============================ */
 .table-view {
     -fx-table-cell-border-color: #ccc;
@@ -64,7 +54,7 @@
     -fx-faint-focus-color: transparent;
 }
 .table-view .column-header-background {
-    -fx-background-color: #1E88E5; /* header row background */
+    -fx-background-color: #1E88E5;
 }
 .table-view .column-header {
     -fx-background-color: transparent;
@@ -75,7 +65,7 @@
     -fx-font-weight: bold;
 }
 .table-view .filler {
-    -fx-background-color: #1E88E5; /* fills empty header space */
+    -fx-background-color: #1E88E5;
 }
 /* Row striping */
 .table-view .table-row-cell:odd {
@@ -97,19 +87,18 @@
     -fx-background-color: #e3f2fd;
     -fx-text-fill: white;
 }
-
 .table-view .table-row-cell .text {
     -fx-fill: black;
 }
 
 /* ============================ */
-/* ListView                      */
+/* ListView                    */
 /* ============================ */
 .list-view {
     -fx-background-insets: 0;
 }
 .list-view .list-cell {
-    -fx-padding: 0.4em 0.6em;
+    -fx-padding: 0.5em 0.8em;
 }
 /* Row striping */
 .list-view .list-cell:odd {
@@ -177,19 +166,32 @@
     -fx-border-width: 2px;
 }
 
+.notification-button {
+    -fx-min-width: 45px;
+    -fx-min-height: 45px;
+    -fx-pref-width: 45px;
+    -fx-pref-height: 45px;
+    -fx-background-radius: 18px;
+    -fx-padding: 0;
+}
+
+/* ============================ */
+/* Profile Picture             */
+/* ============================ */
 .profile-picture {
     -fx-cursor: hand;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 1);
     -fx-background-radius: 24;
 }
-
 .profile-picture:hover {
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
     -fx-scale-x: 1.05;
     -fx-scale-y: 1.05;
 }
 
-/* Authentication Fields */
+/* ============================ */
+/* Authentication Fields       */
+/* ============================ */
 .auth-field {
     -fx-background-color: white;
     -fx-background-radius: 4;
@@ -199,7 +201,6 @@
     -fx-padding: 8 12;
     -fx-font-size: 14px;
 }
-
 .auth-field:focused {
     -fx-border-color: #1565C0;
     -fx-border-width: 2;
@@ -207,83 +208,21 @@
 }
 
 /* ============================ */
-/* Agenda                      */
+/* Agenda Panel                */
 /* ============================ */
-/* agendaVbox */
 #agendaVbox {
-    -fx-background-color: #ADD8E6;
-    -fx-border-color: #1565C0;
-    -fx-border-width: 5;
+    -fx-background-color: #81D4FA;
+    -fx-background-radius: 6;
+    -fx-padding: 1em;
+    -fx-pref-width: 400px;
+    -fx-pref-height: 300px;
 }
 
-/* agendaList */
-#agendaList {
-    -fx-background-color: #1565C0;
-}
-
-/* previewPane */
-#previewPane {
-     -fx-background-color: #fff;
-        -fx-background-radius: 8px;
-        -fx-border-radius: 8px;
-        -fx-border-color: #dae4f2;
-}
-
-/* bottom bar */
+/* ============================ */
+/* Bottom Bar (if used)        */
+/* ============================ */
 #bottomBar {
--fx-background-color: #f8f9fa;
--fx-background-radius: 8;
--fx-border-width: 1;
--fx-border-color: #dae4f2;
-}
-.login-pane {
-    -fx-background-color: white;
-    -fx-spacing: 15;
-    -fx-alignment: center-left;
-}
-
-.title-text {
-    -fx-font-size: 26px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #2c3e50;
-}
-
-.subtitle-text {
-    -fx-font-size: 13px;
-    -fx-text-fill: #555;
-    -fx-wrap-text: true;
-}
-
-.form-label {
-    -fx-font-size: 13px;
-    -fx-text-fill: #444;
-}
-
-.auth-field {
-    -fx-pref-width: 300px;
-    -fx-padding: 10 12;
-    -fx-background-radius: 6px;
-    -fx-background-color: #f9f9f9;
-    -fx-border-color: #ccc;
-    -fx-border-radius: 6px;
-}
-.blue-button {
-    -fx-pref-width: 300px;
-    -fx-background-color: #6c63ff;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-background-radius: 6px;
-}
-
-.blue-button:hover {
-    -fx-background-color: #5b53e6;
-}
-
-.outline-button {
-    -fx-background-color: transparent;
-    -fx-border-color: #6c63ff;
-    -fx-text-fill: #6c63ff;
-    -fx-pref-width: 300px;
-    -fx-background-radius: 6px;
-    -fx-border-radius: 6px;
+    -fx-background-color: #ADD8E6;
+    -fx-background-radius: 6;
+    -fx-padding: 0.8em;
 }
