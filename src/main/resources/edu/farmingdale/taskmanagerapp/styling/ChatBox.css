@@ -41,6 +41,7 @@
 
 .chat-text-area {
     -fx-background-color: #FFFFFF;
+    -fx-control-inner-background: #FFFFFF;
     -fx-border-color: #D8E2DE;
     -fx-border-radius: 16;
     -fx-background-radius: 16;
@@ -49,6 +50,24 @@
     -fx-padding: 14;
     -fx-text-fill: #1B2B2A;
     -fx-effect: dropshadow(gaussian, rgba(20,38,36,0.07), 4, 0, 0, 1);
+}
+
+.chat-text-area .content {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 16;
+}
+
+.chat-text-area .scroll-pane,
+.chat-text-area .scroll-pane > .viewport {
+    -fx-background-color: #FFFFFF;
+}
+
+.chat-text-area .text {
+    -fx-fill: #1B2B2A;
+}
+
+.chat-text-area:focused {
+    -fx-border-color: #0F766E;
 }
 
 .input-container {
@@ -67,6 +86,7 @@
 
 .input-field {
     -fx-background-color: #F8FBF9;
+    -fx-control-inner-background: #F8FBF9;
     -fx-background-radius: 24;
     -fx-border-radius: 24;
     -fx-border-color: #C9D8D2;
@@ -78,8 +98,13 @@
 
 .input-field:focused {
     -fx-background-color: #FFFFFF;
+    -fx-control-inner-background: #FFFFFF;
     -fx-border-color: #4F46E5;
     -fx-effect: dropshadow(gaussian, rgba(79,70,229,0.18), 6, 0, 0, 0);
+}
+
+.input-field .text {
+    -fx-fill: #1B2B2A;
 }
 
 .send-button {
@@ -180,8 +205,26 @@
 
 .dark-mode .chat-text-area {
     -fx-background-color: #121A26;
+    -fx-control-inner-background: #121A26;
     -fx-border-color: #34475A;
     -fx-text-fill: #EAF1F5;
+}
+
+.dark-mode .chat-text-area .content {
+    -fx-background-color: #121A26;
+}
+
+.dark-mode .chat-text-area .scroll-pane,
+.dark-mode .chat-text-area .scroll-pane > .viewport {
+    -fx-background-color: #121A26;
+}
+
+.dark-mode .chat-text-area .text {
+    -fx-fill: #EAF1F5;
+}
+
+.dark-mode .chat-text-area:focused {
+    -fx-border-color: #38D6C7;
 }
 
 .dark-mode .input-container {
@@ -197,6 +240,7 @@
 
 .dark-mode .input-field {
     -fx-background-color: #0F1723;
+    -fx-control-inner-background: #0F1723;
     -fx-border-color: #34475A;
     -fx-text-fill: #EAF1F5;
     -fx-prompt-text-fill: #7E909D;
@@ -204,7 +248,12 @@
 
 .dark-mode .input-field:focused {
     -fx-background-color: #0F1723;
+    -fx-control-inner-background: #0F1723;
     -fx-border-color: #B39DFF;
+}
+
+.dark-mode .input-field .text {
+    -fx-fill: #EAF1F5;
 }
 
 .dark-mode .send-button {

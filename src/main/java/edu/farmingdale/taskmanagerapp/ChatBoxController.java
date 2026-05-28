@@ -28,6 +28,10 @@ public class ChatBoxController {
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
     );
     private static final int MAX_PROMPT_LENGTH = 4_000;
+    private static final String MISSING_API_KEY_MESSAGE = "Error: Gemini API key is not configured. "
+            + "Set GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY outside source control.";
+    private static final String INVALID_API_KEY_MESSAGE = "AI service error: The configured Gemini API key is invalid. "
+            + "Update GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY with a valid Gemini key, then restart the app.";
 
     @FXML
     private TextField inputField;
@@ -74,7 +78,7 @@ public class ChatBoxController {
 
         String apiKey = AI_Helper.getAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            chatArea.appendText("Error: API key not found.\n");
+            chatArea.appendText(MISSING_API_KEY_MESSAGE + "\n");
             sendButton.setDisable(false);
             return;
         }
@@ -144,14 +148,14 @@ public class ChatBoxController {
     @NotNull
     static String parseResponse(int statusCode, @NotNull String responseBody) {
         if (statusCode < 200 || statusCode >= 300) {
-            return parseErrorMessage(responseBody, "AI service returned status " + statusCode + ".");
+            return parseErrorMessage(statusCode, responseBody, "AI service returned status " + statusCode + ".");
         }
 
         try {
             JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonArray candidates = root.getAsJsonArray("candidates");
             if (candidates == null || candidates.isEmpty()) {
-                return parseErrorMessage(responseBody, "AI service returned no response.");
+                return parseErrorMessage(statusCode, responseBody, "AI service returned no response.");
             }
 
             JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
@@ -173,16 +177,49 @@ public class ChatBoxController {
         return response.replace("\\n", "\n");
     }
 
-    private static String parseErrorMessage(String responseBody, String fallback) {
+    private static String parseErrorMessage(int statusCode, String responseBody, String fallback) {
         try {
             JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonObject error = root.getAsJsonObject("error");
             if (error != null && error.has("message")) {
-                return "AI service error: " + error.get("message").getAsString();
+                String message = error.get("message").getAsString();
+                if (isInvalidApiKeyError(statusCode, message, error)) {
+                    return INVALID_API_KEY_MESSAGE;
+                }
+                return "AI service error: " + message;
             }
         } catch (RuntimeException ignored) {
             // Keep a friendly fallback when the service returns non-JSON text.
         }
         return fallback;
+    }
+
+    private static boolean isInvalidApiKeyError(int statusCode, String message, JsonObject error) {
+        String normalizedMessage = message.toLowerCase();
+        if (normalizedMessage.contains("api key not valid")
+                || normalizedMessage.contains("api key invalid")
+                || normalizedMessage.contains("apikey invalid")) {
+            return true;
+        }
+
+        if (statusCode != 400 && statusCode != 401 && statusCode != 403) {
+            return false;
+        }
+
+        JsonArray details = error.getAsJsonArray("details");
+        if (details == null) {
+            return false;
+        }
+
+        for (JsonElement detail : details) {
+            if (detail.isJsonObject()) {
+                JsonObject detailObject = detail.getAsJsonObject();
+                JsonElement reason = detailObject.get("reason");
+                if (reason != null && "API_KEY_INVALID".equalsIgnoreCase(reason.getAsString())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

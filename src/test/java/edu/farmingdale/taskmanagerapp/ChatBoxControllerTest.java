@@ -48,10 +48,31 @@ class ChatBoxControllerTest {
     void parseResponseShowsServiceErrorMessage() {
         String body = """
                 {
-                  "error": { "message": "API key invalid" }
+                  "error": { "message": "Quota exceeded" }
                 }
                 """;
 
-        assertEquals("AI service error: API key invalid", ChatBoxController.parseResponse(401, body));
+        assertEquals("AI service error: Quota exceeded", ChatBoxController.parseResponse(429, body));
+    }
+
+    @Test
+    void parseResponseShowsInvalidApiKeyGuidance() {
+        String body = """
+                {
+                  "error": {
+                    "message": "API key not valid. Please pass a valid API key.",
+                    "details": [
+                      { "reason": "API_KEY_INVALID" }
+                    ]
+                  }
+                }
+                """;
+
+        assertEquals(
+                "AI service error: The configured Gemini API key is invalid. "
+                        + "Update GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY with a valid Gemini key, "
+                        + "then restart the app.",
+                ChatBoxController.parseResponse(400, body)
+        );
     }
 }

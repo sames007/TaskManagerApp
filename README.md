@@ -31,6 +31,7 @@ The application starts with a splash screen, then opens the login screen. If dat
 ## Configuration
 
 Do not commit live credentials to source control. Configuration can be provided with environment variables, Java system properties, or an ignored `config.local.properties` file in the project root.
+If the same setting appears in more than one place, Java system properties take precedence, then environment variables, then `config.local.properties`, then the bundled template.
 
 Optional database settings:
 
@@ -114,6 +115,7 @@ src/test/java/edu/farmingdale/taskmanagerapp/      Unit tests
 
 - If the app opens in offline mode, confirm `DB_URL`, `DB_USER`, and `DB_PASSWORD` are configured.
 - If the AI assistant reports a missing key, set `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `API_KEY`.
+- If the AI assistant reports an invalid key, replace the configured Gemini key in your environment or ignored `config.local.properties` file, then restart the app.
 - If JavaFX fails to launch, confirm `JAVA_HOME` points to JDK 23 or newer.
 - If imports fail, confirm the selected file is a supported `.csv` or `.txt` file and is within the configured size limit.
 
