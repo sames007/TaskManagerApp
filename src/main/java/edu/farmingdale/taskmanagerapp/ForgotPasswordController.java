@@ -4,6 +4,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
@@ -13,7 +14,9 @@ public class ForgotPasswordController {
     @FXML
     private Text securityQuestionText, newPasswordText, confirmPasswordText;
     @FXML
-    private TextField answerField, newPasswordField, confirmField, emailField;
+    private TextField answerField, emailField;
+    @FXML
+    private PasswordField newPasswordField, confirmField;
     @FXML
     private Button backButton, confirmButton, verifyButton, retrieveQuestionButton;
 
@@ -25,8 +28,6 @@ public class ForgotPasswordController {
     @FXML
     public void initialize(){
 
-        dbManager = new DatabaseManager();
-
         newPasswordField.setVisible(false);
         confirmField.setVisible(false);
         confirmButton.setVisible(false);
@@ -34,12 +35,17 @@ public class ForgotPasswordController {
         newPasswordText.setVisible(false);
 
         ChangeListener<String> passwordMatchListener = (obs, oldVal, newVal)->{
-            boolean match = newPasswordField.getText().equals(confirmField.getText());
+            boolean match = !newPasswordField.getText().isEmpty()
+                    && newPasswordField.getText().equals(confirmField.getText());
             confirmButton.setDisable(!match);
         };
 
         newPasswordField.textProperty().addListener(passwordMatchListener);
         confirmField.textProperty().addListener(passwordMatchListener);
+    }
+
+    public void setDatabaseManager(DatabaseManager dbManager) {
+        this.dbManager = dbManager;
     }
 
     /**
@@ -59,19 +65,28 @@ public class ForgotPasswordController {
      */
     @FXML
     public void retrieveQuestion(){
-        String email = emailField.getText();
+        DatabaseManager manager = getDatabaseManager();
+        if (!manager.isAvailable()) {
+            showAlert("Password recovery is unavailable in offline mode.");
+            return;
+        }
+        String email = emailField.getText().trim();
         if(email.isEmpty()){
             showAlert("Please enter your email");
             return;
         }
 
-        UserSession user = dbManager.getAccountByEmail(email);
+        try {
+            UserSession user = manager.getAccountByEmail(email);
 
-        if(user == null || user.getSecurityQuestion() == null || user.getSecurityQuestion().isEmpty()){
-            showAlert("No account found with that email!");
-            return;
+            if(user == null || user.getSecurityQuestion() == null || user.getSecurityQuestion().isEmpty()){
+                showAlert("No account found with that email!");
+                return;
+            }
+            securityQuestionText.setText(user.getSecurityQuestion());
+        } catch (RuntimeException e) {
+            showAlert("Unable to retrieve security question: " + e.getMessage());
         }
-        securityQuestionText.setText(user.getSecurityQuestion());
     }
 
     /**
@@ -79,7 +94,12 @@ public class ForgotPasswordController {
      */
     @FXML
     public void verifyAnswer(){
-        String email = emailField.getText();
+        DatabaseManager manager = getDatabaseManager();
+        if (!manager.isAvailable()) {
+            showAlert("Password recovery is unavailable in offline mode.");
+            return;
+        }
+        String email = emailField.getText().trim();
         String answer = answerField.getText();
 
         if(email.isEmpty()||answer.isEmpty()){
@@ -87,16 +107,26 @@ public class ForgotPasswordController {
             return;
         }
 
-        UserSession user = dbManager.getAccountByEmail(email);
+        UserSession user;
+        try {
+            user = manager.getAccountByEmail(email);
+        } catch (RuntimeException e) {
+            showAlert("Unable to verify answer: " + e.getMessage());
+            return;
+        }
 
         if(user==null){
             showAlert("No account found with that email!");
             return;
         }
 
-        String correctAnswer = user.getSecurityAnswer();
+        String expectedAnswer = user.getSecurityAnswer();
+        String normalizedAnswer = PasswordUtil.normalizeSecurityAnswer(answer);
 
-        if(correctAnswer==null||!correctAnswer.equalsIgnoreCase(answer)){
+        boolean answerMatches = expectedAnswer != null
+                && (PasswordUtil.verifyPassword(normalizedAnswer, expectedAnswer)
+                || expectedAnswer.equalsIgnoreCase(answer.trim()));
+        if(!answerMatches){
             showAlert("Incorrect answer to security question!");
             return;
         }
@@ -114,7 +144,12 @@ public class ForgotPasswordController {
      */
     @FXML
     public void confirmPassword(){
-        String email = emailField.getText();
+        DatabaseManager manager = getDatabaseManager();
+        if (!manager.isAvailable()) {
+            showAlert("Password recovery is unavailable in offline mode.");
+            return;
+        }
+        String email = emailField.getText().trim();
         String newPassword = newPasswordField.getText();
         String confirmPassword = confirmField.getText();
 
@@ -127,9 +162,15 @@ public class ForgotPasswordController {
             showAlert("Passwords do not match!");
             return;
         }
+
+        String validationError = PasswordUtil.validatePassword(newPassword);
+        if (validationError != null) {
+            showAlert(validationError);
+            return;
+        }
+
         try {
-            System.out.println("Updating password for email with new password: " + email + " " + newPassword);
-            dbManager.updatePassword(email, newPassword);
+            manager.updatePassword(email, newPassword);
             showAlert("Password successfully updated!");
             Stage window = (Stage) confirmButton.getScene().getWindow();
             window.close();
@@ -145,5 +186,12 @@ public class ForgotPasswordController {
     public void handleBack() {
         Stage stage = (Stage) backButton.getScene().getWindow();
         stage.close();
+    }
+
+    private DatabaseManager getDatabaseManager() {
+        if (dbManager == null) {
+            dbManager = new DatabaseManager();
+        }
+        return dbManager;
     }
 }

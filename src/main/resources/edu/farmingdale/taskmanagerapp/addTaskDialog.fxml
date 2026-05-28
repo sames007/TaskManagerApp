@@ -10,32 +10,32 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="575.0" prefWidth="320.0" spacing="12" style="-fx-padding: 15;" stylesheets="@styling/addTaskDialog.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.AddTaskController">
+<VBox prefHeight="575.0" prefWidth="360.0" spacing="12" styleClass="task-dialog" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.farmingdale.taskmanagerapp.AddTaskController">
 
-    <Label styleClass="label-title" stylesheets="@styling/addTaskDialog.css" text="Task Description:" />
-    <TextField fx:id="taskInput" promptText="Enter Task Description" />
+    <Label styleClass="label-title" text="Task Description" />
+    <TextField fx:id="taskInput" maxWidth="Infinity" promptText="Enter task description" />
 
-    <Label styleClass="label-title" text="Due Date:" />
-    <DatePicker fx:id="dueDatePicker" prefHeight="53.0" prefWidth="202.5" />
+    <Label styleClass="label-title" text="Due Date" />
+    <DatePicker fx:id="dueDatePicker" maxWidth="Infinity" />
 
-    <Label styleClass="label-title" text="Due Time:" />
+    <Label styleClass="label-title" text="Due Time" />
     <HBox alignment="CENTER_LEFT" spacing="8">
-        <Spinner fx:id="hourSpinner" prefHeight="53.0" prefWidth="102.0" />
-        <Spinner fx:id="minuteSpinner" prefHeight="53.0" prefWidth="102.0" />
-        <ComboBox fx:id="amPmComboBox" prefWidth="85.0" />
+        <Spinner fx:id="hourSpinner" prefWidth="96.0" />
+        <Spinner fx:id="minuteSpinner" prefWidth="96.0" />
+        <ComboBox fx:id="amPmComboBox" prefWidth="88.0" />
     </HBox>
 
-    <Label styleClass="label-title" text="Priority:" />
-    <ComboBox fx:id="priorityComboBox" onAction="#initialize" prefWidth="202.5" promptText="Select Priority" />
+    <Label styleClass="label-title" text="Priority" />
+    <ComboBox fx:id="priorityComboBox" maxWidth="Infinity" promptText="Select priority" />
 
-    <Label styleClass="label-title" text="Category:" />
-    <ComboBox fx:id="categoryComboBox" onAction="#initialize" prefWidth="202.5" promptText="Select Category" />
+    <Label styleClass="label-title" text="Category" />
+    <ComboBox fx:id="categoryComboBox" maxWidth="Infinity" promptText="Select category" />
 
-    <Label styleClass="label-title" text="Reminder Date (Optional):" />
-    <DatePicker fx:id="reminderDatePicker" prefWidth="202.5" />
+    <Label styleClass="label-title" text="Reminder Date (Optional)" />
+    <DatePicker fx:id="reminderDatePicker" maxWidth="Infinity" />
 
     <VBox alignment="CENTER">
-        <Button fx:id="submitTaskButton" onAction="#submitTask" prefHeight="35.0" prefWidth="130.0" stylesheets="@styling/addTaskDialog.css" text="Add Task">
+        <Button fx:id="submitTaskButton" onAction="#submitTask" prefWidth="150.0" text="Add Task">
          <VBox.margin>
             <Insets top="5.0" />
          </VBox.margin></Button>

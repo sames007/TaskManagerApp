@@ -1,4 +1,7 @@
 target/
+${project.build.directory}/
+config.local.properties
+*.log
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

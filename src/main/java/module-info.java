@@ -8,6 +8,7 @@ module edu.farmingdale.taskmanagerapp {
     requires mysql.connector.j;
     requires annotations;
     requires java.prefs;
+    requires com.google.gson;
 
     opens edu.farmingdale.taskmanagerapp to javafx.fxml;
     exports edu.farmingdale.taskmanagerapp;

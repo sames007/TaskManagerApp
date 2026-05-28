@@ -20,12 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Notification For Task Due Soon
+ * Checks tasks for due-soon reminders and displays lightweight desktop notifications.
  */
 public class NotificationService {
-    private static final int NOTIFICATION_DURATION = 5000; // 5 seconds
-    private static final int CHECK_INTERVAL = 60000; // Check every minute
-    private static final int DUE_SOON_THRESHOLD = 24; // Notify if due within 24 hours
+    private static final int NOTIFICATION_DURATION = 5000;
+    private static final int CHECK_INTERVAL = 60000;
+    private static final int DUE_SOON_THRESHOLD = 24;
     private static final List<Stage> activeNotifications = new ArrayList<>();
     private static Timeline notificationCheckTimeline;
 
@@ -45,9 +45,6 @@ public class NotificationService {
         notificationCheckTimeline.play();
     }
 
-    /**
-     * @param controller the TaskManagerController
-     */
     public static void checkDueTasks(TaskManagerController controller) {
         Platform.runLater(() -> {
             for (Task task : controller.getTasks()) {
@@ -59,13 +56,12 @@ public class NotificationService {
     }
 
     /**
-     * Determines whether a notification should be sent for a given task based on its status
-     * and its proximity to the due date and time
-     * @param task the task to evaluate for notification. The task is checked for its status
-     * @return true if the task is due soon and its status is not "Completed";
+     * Determines whether an incomplete task is due within the notification window.
+     * @param task the task to evaluate
+     * @return true when the task is incomplete and due within 24 hours
      */
     public static boolean shouldNotifyTask(@NotNull Task task) {
-        if (task.getStatus().equals("Completed")) {
+        if ("Completed".equalsIgnoreCase(task.getStatus()) || task.getDueDate() == null) {
             return false;
         }
 
@@ -122,14 +118,12 @@ public class NotificationService {
             scene.setFill(Color.TRANSPARENT);
             notificationStage.setScene(scene);
 
-            // Position the notification in the bottom-right corner
             notificationStage.setX(javafx.stage.Screen.getPrimary().getVisualBounds().getWidth() - 300);
             notificationStage.setY(javafx.stage.Screen.getPrimary().getVisualBounds().getHeight() - 150);
 
             notificationStage.show();
             activeNotifications.add(notificationStage);
 
-            // Auto-close the notification after duration
             Timeline closeTimeline = new Timeline(
                 new KeyFrame(Duration.millis(NOTIFICATION_DURATION), event -> {
                     notificationStage.close();
@@ -147,10 +141,9 @@ public class NotificationService {
         if (notificationCheckTimeline != null) {
             notificationCheckTimeline.stop();
         }
-        // Close all active notifications
         for (Stage notification : activeNotifications) {
             notification.close();
         }
         activeNotifications.clear();
     }
-} 
+}

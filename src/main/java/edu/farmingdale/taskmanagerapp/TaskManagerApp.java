@@ -12,7 +12,8 @@ import javafx.util.Duration;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The main entry point for the Task Manager JavaFX application.
@@ -24,8 +25,8 @@ import java.util.Objects;
  * to the main controller and login controller.
  */
 public class TaskManagerApp extends Application {
+    private static final Logger LOGGER = Logger.getLogger(TaskManagerApp.class.getName());
 
-    /** A shared instance of the database manager for all controllers */
     private DatabaseManager dbManager;
 
     /**
@@ -37,73 +38,63 @@ public class TaskManagerApp extends Application {
      */
     @Override
     public void start(@NotNull Stage primaryStage) throws Exception {
-        // Initialize shared database manager
         dbManager = new DatabaseManager();
 
-        // Load the splash screen
         FXMLLoader splashLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/SplashScreen.fxml"));
         Parent splashRoot = splashLoader.load();
 
-        // Preload main view just to measure size (for consistent window size)
+        // Preload the main view so the splash and login windows use the final app size.
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/TaskManagerView.fxml"));
         Parent mainRoot = mainLoader.load();
         double width = mainRoot.prefWidth(-1);
         double height = mainRoot.prefHeight(-1);
 
-        // Show splash screen with computed size
         Scene splashScene = new Scene(splashRoot, width, height);
+        ThemeManager.bindToSystemTheme(splashScene);
         primaryStage.setTitle("Loading...");
         primaryStage.setScene(splashScene);
         primaryStage.show();
 
-        // Fade in splash screen
         FadeTransition fadeIn = new FadeTransition(Duration.seconds(1), splashRoot);
         fadeIn.setFromValue(0.0);
         fadeIn.setToValue(1.0);
 
-        // Wait before transitioning
         PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
 
-        // Fade out splash screen
         FadeTransition fadeOut = new FadeTransition(Duration.seconds(1), splashRoot);
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
 
-        // After fade-out, show login screen
         fadeOut.setOnFinished(event -> {
             try {
-                // Load login screen
                 FXMLLoader loginLoader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/LoginView.fxml"));
                 Parent loginRoot = loginLoader.load();
 
-                // Inject shared main controller and DB manager
                 LoginController loginController = loginLoader.getController();
                 TaskManagerController mainController = mainLoader.getController();
                 mainController.setDatabaseManager(dbManager);
                 loginController.setMainController(mainController);
 
-                // Set up the login scene with same dimensions
                 Scene loginScene = new Scene(loginRoot, width, height);
-                loginScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+                ThemeManager.bindToSystemTheme(loginScene);
 
                 primaryStage.setTitle("Login");
                 primaryStage.setScene(loginScene);
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Unable to load login screen.", e);
                 Platform.exit();
             }
         });
 
-        // Sequence of animations
         fadeIn.setOnFinished(e -> pause.play());
         pause.setOnFinished(e -> fadeOut.play());
         fadeIn.play();
     }
 
     /**
-     * Main method — entry point for the Java application.
+     * Main method and entry point for the Java application.
      *
-     * @param args Command-line arguments (not used)
+     * @param args command-line arguments passed to JavaFX
      */
     public static void main(String[] args) {
         launch(args);

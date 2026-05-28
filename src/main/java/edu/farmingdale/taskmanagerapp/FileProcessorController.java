@@ -10,19 +10,25 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Controller that handles file drag and drop to import tasks.
  */
 public class FileProcessorController {
-    @FXML private VBox dropZone; // The area where files can be dropped
-    @FXML private Label dropLabel; // Label inside the drop zone
-    private TaskManagerController taskManagerController; // Reference to the main task controller
+    private static final Logger LOGGER = Logger.getLogger(FileProcessorController.class.getName());
+    private static final long MAX_IMPORT_BYTES = 1_000_000;
+
+    @FXML private VBox dropZone;
+    @FXML private Label dropLabel;
+    private TaskManagerController taskManagerController;
     private DatabaseManager dbManager;
 
     /**
@@ -49,12 +55,7 @@ public class FileProcessorController {
         this.taskManagerController = controller;
     }
 
-    /**
-     * Sets up drag and drop events for the dropZone.
-     * CSS classes are added/removed for visual feedback.
-     */
     private void setupDragAndDrop() {
-        // Accept files if they are dragged over the drop zone
         dropZone.setOnDragOver(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
@@ -62,7 +63,6 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When a file enters the drop zone, update style and label text
         dropZone.setOnDragEntered(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 dropZone.getStyleClass().add("drop-zone-hover");
@@ -71,14 +71,12 @@ public class FileProcessorController {
             event.consume();
         });
 
-        // When a file leaves, remove hover-style and reset label text
         dropZone.setOnDragExited(event -> {
             dropZone.getStyleClass().remove("drop-zone-hover");
             dropLabel.setText("Drag and drop task file here");
             event.consume();
         });
 
-        // When a file is dropped, process the file and mark the event as completed
         dropZone.setOnDragDropped(event -> {
             Dragboard db = event.getDragboard();
             boolean success = false;
@@ -97,19 +95,23 @@ public class FileProcessorController {
      * @param file the file to be processed
      */
     private void processFile(File file) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        if (!isAllowedImportFile(file)) {
+            showError("Please import a .txt or .csv file under 1 MB.");
+            return;
+        }
+
+        try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
             StringBuilder content = new StringBuilder();
             String line;
-            // Read each line from the file
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
             }
             processFileContent(content.toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error reading imported file.", e);
             showError("Error reading file: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error processing imported file.", e);
             showError("Error processing file: " + e.getMessage());
         }
     }
@@ -120,7 +122,6 @@ public class FileProcessorController {
      * @param content the complete file content as a String
      */
     private void processFileContent(@NotNull String content) {
-        // Split the file into sections separated by blank lines
         String[] sections = content.split("\n\n");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         for (String section : sections) {
@@ -128,7 +129,7 @@ public class FileProcessorController {
             String taskName = "";
             LocalDate deadline = null;
             String description = "";
-            String priority = "Medium"; // Default priority
+            String priority = "Medium";
             LocalTime dueTime = null;
             for (String line : lines) {
                 if (line.startsWith("Task Name:")) {
@@ -138,7 +139,6 @@ public class FileProcessorController {
                     try {
                         deadline = LocalDate.parse(dateStr, formatter);
                     } catch (Exception e) {
-                        // Skip if a date is not valid
                         continue;
                     }
                 } else if (line.startsWith("Description:")) {
@@ -153,31 +153,34 @@ public class FileProcessorController {
                         int minute = Integer.parseInt(timeParts[1]);
                         dueTime = LocalTime.of(hour, minute);
                     } catch (Exception e) {
-                        // Default to 00:00 if parsing fails
                         dueTime = LocalTime.of(0, 0);
                     }
                 }
             }
-            // Create and add the task if the taskName and deadline are valid
             if (!taskName.isEmpty() && deadline != null) {
                 Task task = new Task(
                         taskName + (description.isEmpty() ? "" : " - " + description),
                         deadline,
-                        dueTime != null ? dueTime : LocalTime.of(0, 0), // Use parsed due time if available
+                        dueTime != null ? dueTime : LocalTime.of(0, 0),
                         priority
                 );
 
-                // Add the task to TaskManagerController
                 if (taskManagerController != null) {
                     taskManagerController.addImportedTask(task);
-                }
-
-                // Save the task to the database if available
-                if (dbManager != null) {
+                } else if (dbManager != null && dbManager.isAvailable()) {
                     dbManager.addTask(task);
                 }
             }
         }
+    }
+
+    private boolean isAllowedImportFile(File file) {
+        if (file == null || !file.isFile() || file.length() > MAX_IMPORT_BYTES) {
+            return false;
+        }
+
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".txt") || name.endsWith(".csv");
     }
 
     /**

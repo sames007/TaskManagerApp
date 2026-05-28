@@ -31,23 +31,21 @@ public class AddTaskController {
     @FXML
     private DatePicker reminderDatePicker;
     @FXML
-    private Button submitTaskButton; // Reference to the button
+    private Button submitTaskButton;
 
-    // Reference to the main controller
-    private TaskManagerController mainController; // Reference to the main controller
+    private TaskManagerController mainController;
     private Task taskToEdit = null;
     private boolean editMode = false;
 
-    // Setter to inject the main controller
     /**
-     * @param mainController the main controller to set
+     * Provides access to task persistence and shared UI helpers.
      */
     public void setMainController(TaskManagerController mainController) {
         this.mainController = mainController;
     }
 
     /**
-     * @param task the task to edit
+     * Switches the dialog between add mode and edit mode.
      */
     public void setTaskToEdit(Task task) {
         this.taskToEdit = task;
@@ -63,7 +61,7 @@ public class AddTaskController {
     }
 
     /**
-     * Populates the fields for adding tasks
+     * Populates the form with the selected task's values.
      */
     private void populateFields() {
         if (taskToEdit == null) {
@@ -110,30 +108,9 @@ public class AddTaskController {
      */
     @FXML
     public void initialize() {
-        // Initialize ComboBoxes with their items
         priorityComboBox.setItems(FXCollections.observableArrayList("Extreme", "High", "Medium", "Low"));
         categoryComboBox.setItems(FXCollections.observableArrayList("School", "Work", "Personal", "Family", "Other"));
 
-        // Set up ComboBox selection listeners
-        priorityComboBox.setOnAction(event -> {
-            String selectedPriority = priorityComboBox.getValue();
-            if (selectedPriority != null) {
-                // Keep the current category selection
-                String currentCategory = categoryComboBox.getValue();
-                categoryComboBox.setValue(currentCategory);
-            }
-        });
-
-        categoryComboBox.setOnAction(event -> {
-            String selectedCategory = categoryComboBox.getValue();
-            if (selectedCategory != null) {
-                // Keep the current priority selection
-                String currentPriority = priorityComboBox.getValue();
-                priorityComboBox.setValue(currentPriority);
-            }
-        });
-
-        // Initialize time spinners
         SpinnerValueFactory<Integer> hourFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12, 12);
         hourSpinner.setValueFactory(hourFactory);
         hourSpinner.setEditable(true);
@@ -145,15 +122,12 @@ public class AddTaskController {
             minuteSpinner.getEditor().setText(String.format("%02d", newValue));
         });
 
-        // Initialize AM/PM ComboBox
         amPmComboBox.setItems(FXCollections.observableArrayList("AM", "PM"));
         amPmComboBox.setValue("AM");
 
-        // Set the initial button text
         submitTaskButton.setText("Add Task");
-
-        // Add validation listeners
         addValidationListeners();
+        validateFields();
     }
 
     /**
@@ -167,7 +141,7 @@ public class AddTaskController {
     }
 
     /**
-     * Validates Fields To Make Sure All Required Fields Are Filled
+     * Enables submission only when the required fields contain valid input.
      */
     private void validateFields() {
         boolean isValid = !taskInput.getText().trim().isEmpty() &&
@@ -196,7 +170,6 @@ public class AddTaskController {
      */
     @FXML
     private void submitTask() {
-        // --- Validation (similar to original addTask) ---
         String description = taskInput.getText().trim();
         LocalDate dueDate = dueDatePicker.getValue();
         Integer hour = hourSpinner.getValue();
@@ -204,15 +177,15 @@ public class AddTaskController {
         String amPm = amPmComboBox.getValue();
         String priority = priorityComboBox.getValue();
         String category = categoryComboBox.getValue();
-        LocalDate reminder = reminderDatePicker.getValue(); // Optional
+        LocalDate reminder = reminderDatePicker.getValue();
 
         if (!isValid(description, dueDate, hour, minute, amPm, priority, category)) {
-            return; // showAlert is called within isValidInput
+            return;
         }
-        // Convert time using the helper method from the main controller
+
         LocalTime dueTime = mainController.convertToLocalTime(hour, minute, amPm);
         if (dueTime == null) {
-            mainController.showAlert("Invalid Time"); // Handle potential null from conversion
+            mainController.showAlert("Invalid time.");
             return;
         }
         if (editMode && taskToEdit != null) {
@@ -250,18 +223,17 @@ public class AddTaskController {
                             String amPm, String priority, String category) {
         if (description.isEmpty() || dueDate == null || hour == null || minute == null
            || amPm == null || priority == null || category == null) {
-            mainController.showAlert("Please Fill All Required Fields (Description, Due Date, Time, Priority, Category)");
+            mainController.showAlert("Please fill all required fields: description, due date, time, priority, and category.");
             return false;
         }
         if (dueDate.isBefore(LocalDate.now())) {
-            mainController.showAlert("Due Date Cannot Be In The Past.");
+            mainController.showAlert("Due date cannot be in the past.");
             return false;
         }
 
         return true;
     }
 
-    // Helper to close the dialog window
     /**
      * Closes the dialog window.
      */

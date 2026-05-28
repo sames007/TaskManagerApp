@@ -7,17 +7,20 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Controller for the Login screen.
  */
 public class LoginController {
+    private static final Logger LOGGER = Logger.getLogger(LoginController.class.getName());
 
     @FXML
     private TextField emailTextField;
@@ -46,15 +49,25 @@ public class LoginController {
         }
     }
 
-    /**
-     * Handles the forgot password functionality
-     */
     private void handleForgotPassword() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Forgot Password");
-        alert.setHeaderText("Password Recovery");
-        alert.setContentText("Please contact support or check your email for password recovery.");
-        alert.showAndWait();
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/farmingdale/taskmanagerapp/ForgotPasswordView.fxml"));
+            Parent root = loader.load();
+
+            ForgotPasswordController controller = loader.getController();
+            controller.setDatabaseManager(mainController.getDbManager());
+
+            Stage dialog = new Stage();
+            dialog.setTitle("Forgot Password");
+            dialog.initOwner(emailTextField.getScene().getWindow());
+            dialog.initModality(Modality.WINDOW_MODAL);
+            Scene scene = new Scene(root);
+            ThemeManager.bindToSystemTheme(scene);
+            dialog.setScene(scene);
+            dialog.showAndWait();
+        } catch (IOException e) {
+            mainController.showAlert("Failed to open password recovery: " + e.getMessage());
+        }
     }
 
     /**
@@ -76,7 +89,7 @@ public class LoginController {
     public void login(ActionEvent actionEvent) {
         try {
             String email = emailTextField.getText().trim();
-            String password = passwordTextField.getText().trim();
+            String password = passwordTextField.getText();
 
             if (!validateInputs(email, password)) {
                 return;
@@ -99,7 +112,7 @@ public class LoginController {
      */
     private boolean validateInputs(@NotNull String email, String password) {
         if (email.isEmpty() || password.isEmpty()) {
-            mainController.showAlert("Please enter both email and password.");
+            mainController.showAlert("Please enter your email or username and password.");
             return false;
         }
         return true;
@@ -110,15 +123,28 @@ public class LoginController {
      */
     @Nullable
     private UserSession authenticateUser(String email, String password) {
-        UserSession user = new UserSession("", email, password, "", "");
-        UserSession authenticatedUser = mainController.getDbManager().getAccount(user.getEmail());
+        if (!mainController.isDatabaseAvailable()) {
+            return createOfflineUser(email, password);
+        }
 
-        if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty() ||
-                !authenticatedUser.getPassword().equals(password)) {
+        UserSession authenticatedUser = mainController.getDbManager().authenticateUser(email, password);
+
+        if (authenticatedUser == null || authenticatedUser.getUserName().isEmpty()) {
             mainController.showAlert("Login failed. Please check your credentials.");
             return null;
         }
         return authenticatedUser;
+    }
+
+    private UserSession createOfflineUser(String identifier, String password) {
+        String userName = identifier.contains("@")
+                ? identifier.substring(0, identifier.indexOf('@'))
+                : identifier;
+        String email = identifier.contains("@") ? identifier : identifier + "@offline.local";
+
+        UserSession offlineUser = new UserSession(userName, email, password, "", "");
+        offlineUser.setUserID(Math.abs(email.toLowerCase().hashCode()));
+        return offlineUser;
     }
 
     /**
@@ -146,17 +172,14 @@ public class LoginController {
      * Loads the required stylesheets for the scene
      */
     private void loadStylesheets(@NotNull Scene scene) {
-        scene.getStylesheets().addAll(
-            Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm(),
-            Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm()
-        );
+        ThemeManager.bindToSystemTheme(scene);
     }
 
     /**
      * Handles any errors that occur during login
      */
     private void handleLoginError(@NotNull Exception e) {
-        e.printStackTrace();
+        LOGGER.log(Level.WARNING, "Login failed.", e);
         mainController.showAlert("Login error: " + e.getMessage());
     }
 
@@ -174,12 +197,12 @@ public class LoginController {
 
             Stage stage = (Stage) emailTextField.getScene().getWindow();
             Scene scene = new Scene(root, stage.getScene().getWidth(), stage.getScene().getHeight());
-            scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/styles.css")).toExternalForm());
+            ThemeManager.bindToSystemTheme(scene);
             
             stage.setTitle("Sign Up");
             stage.setScene(scene);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Failed to open sign-up screen.", e);
             mainController.showAlert("Failed to open Sign Up screen: " + e.getMessage());
         }
     }

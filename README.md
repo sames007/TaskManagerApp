@@ -1,55 +1,79 @@
-## <div align="center"> <img width="205" alt="Screenshot 2025-04-29 at 8 34 08 AM" src="https://github.com/user-attachments/assets/5d165249-f506-4013-b16c-36d16aa25252" /> <div align="center"> Task Management System </div>
+# Task Management System
 
-## General Description
-This task management application is built to help people organize their daily tasks, such as homework, projects, tests, shopping, checking emails, going to the gym, and paying bills. Many of us struggle to keep track of everything, so this app aims to make it easier by letting users add tasks, set reminders, and monitor their progress. The goal is to help everyone plan their day better and boost productivity.
+A JavaFX desktop application for organizing personal, school, work, and family tasks. The app supports task creation, editing, deletion, completion tracking, CSV import/export, reminders, a calendar view, light/dark themes, profile pictures, and an optional AI assistant.
 
-This application will allow users to:
-- Add, edit, and delete tasks
-- Set reminders and deadlines
-- Track task progress
-- View calendar and scheduling features
+## Features
 
-This application creates a user-friendly and efficient task management system, develops a reliable and scalable application, and improves users' time management by assisting them in prioritizing their tasks.
+- Create, edit, complete, and delete tasks.
+- Track due dates, due times, categories, priorities, status, and optional reminders.
+- View scheduled tasks in a calendar and upcoming-task panel.
+- Import and export tasks as CSV files.
+- Receive local notifications for incomplete tasks due within 24 hours.
+- Switch between light and dark themes.
+- Use the app without a database through offline local JSON storage.
+- Use Gemini-powered AI assistance when an API key is configured.
 
-## Technologies
-This application uses modern technologies to give users an ideal experience:
-- Primary IDE: IntelliJ IDEA
-- Backend: Java JDK 23
-- Dependency: Maven
-- Frontend: JavaFX (FXML, Graphics, and Controls) and CSS for styling
-- Database: Microsoft Azure SQL Server
+## Offline Mode
 
-## Task Types
-- School
-- Work
-- Personal
-- Family
-- Other
+The app does not require the database to run. If database credentials are missing or the database is unreachable, login and sign-up continue in offline mode and tasks are stored locally at:
 
-## Priority Types
-- Extreme
-- High
-- Medium
-- Low
+`%USERPROFILE%\.taskmanagerapp\tasks.json`
 
-## Our Developmental Design Process
-<img width="605" alt="Screenshot 2025-04-29 at 8 11 15 AM" src="https://github.com/user-attachments/assets/a7215fda-87d4-4829-89a1-71d88386684e" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 12 36 AM" src="https://github.com/user-attachments/assets/e4c9abef-618e-43f8-a54a-3c280ceb9be6" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 14 44 AM" src="https://github.com/user-attachments/assets/60a83a6b-e7b7-4144-b243-c339002dfabd" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 21 52 AM" src="https://github.com/user-attachments/assets/75bf2299-cce5-4158-9b2d-c23416293c17" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 22 54 AM" src="https://github.com/user-attachments/assets/30d99372-4b63-4559-ae5a-c71ff1748816" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 17 46 AM" src="https://github.com/user-attachments/assets/ef476bcf-8e1f-415a-942b-23005f02d0df" />
-<img width="605" alt="Screenshot 2025-04-29 at 8 19 57 AM" src="https://github.com/user-attachments/assets/b499ea03-a38a-463b-8a5d-89fae9f29549" />
+Offline task data is separated by the email or username used at login.
+
+## Requirements
+
+- Java JDK 23 or newer
+- Maven, or the included Maven wrapper
+- JavaFX dependencies provided through Maven
+
+## Configuration
+
+Live credentials should never be committed to source control. Configuration can be supplied through environment variables, Java system properties, or an ignored `config.local.properties` file in the project root.
+
+Optional database settings:
+
+- `DB_URL`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_SSL_MODE` (defaults to `REQUIRED`)
+
+Optional AI assistant setting:
+
+- `GEMINI_API_KEY`
+- `GOOGLE_API_KEY`
+- `API_KEY`
+
+## Run
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-24"
+.\mvnw.cmd javafx:run
+```
+
+## Test And Build
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-24"
+.\mvnw.cmd test
+.\mvnw.cmd package
+```
+
+The packaged jar is created under `target/`.
+
+## Security Notes
+
+- API keys and database credentials are loaded from external configuration.
+- Passwords are hashed with PBKDF2 before database storage.
+- Older plaintext database passwords can still be verified and are upgraded after successful login.
+- Profile-picture and import-file handling validates file type and size.
+- Generated build output is ignored and should not be committed.
 
 ## Contributors
-Yohangel Adames: Project Manager and Tech Support
 
-Antonio Villani: Scribe and Software Developer
-
-Philippe Jean: Architect
-
-Saim Sameer: Quality Assurance
-
-Bennett Thomas: Quality Assurance and Tech Support
-
-Zabdial Nunez: Software Developer
+- Yohangel Adames: Project Manager and Tech Support
+- Antonio Villani: Scribe and Software Developer
+- Philippe Jean: Architect
+- Saim Sameer: Quality Assurance
+- Bennett Thomas: Quality Assurance and Tech Support
+- Zabdial Nunez: Software Developer

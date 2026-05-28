@@ -1,5 +1,9 @@
 package edu.farmingdale.taskmanagerapp;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -14,154 +18,171 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 /**
- * This class controls the chatbox in which the user and the AI communicate.
- * Calls the AI_Service class with API Key and prints out responses.
+ * Controller for the AI chat window.
  */
 public class ChatBoxController {
-    // The text field where the user types their message
+    private static final URI GEMINI_ENDPOINT = URI.create(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    );
+    private static final int MAX_PROMPT_LENGTH = 4_000;
+
     @FXML
     private TextField inputField;
-    // The button that sends the message
     @FXML
     private Button sendButton;
-    // The area where chat messages (user and AI) are displayed
     @FXML
     private TextArea chatArea;
 
-    // HTTP client used to make asynchronous calls to the AI service
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
-    // This method is automatically called after the FXML is loaded
     /**
-     * Initializes the controller after the FXML file is loaded.
+     * Initializes chat actions after the FXML file is loaded.
      */
     @FXML
     public void initialize() {
-        // Set up the send button to call sendMessage() when clicked
         sendButton.setOnAction(event -> sendMessage());
-
-        // Also, send the message when the Enter key is pressed in the input field
         inputField.setOnKeyPressed((KeyEvent event) -> {
             if (event.getCode() == KeyCode.ENTER) {
                 sendMessage();
-                event.consume(); // Prevents the Enter key from triggering other events
+                event.consume();
             }
         });
     }
 
-    // This method handles sending the message to the AI service
     /**
-     * Sends a user message and retrieves an AI-generated response.
-     * 1. Get user input from the text field.
-     * 3. Display the user message in the chat area.
-     * 4. Construct a JSON payload with system instructions and user content.
-     * 5. Retrieve the API key from the configuration helper class.
-     * 6. Send an asynchronous HTTP POST request to the AI model's API.
-     * 7. Parse and format the AI-generated response upon receipt.
-     * 8. Handle and display any errors encountered during the process.
+     * Sends the user's prompt to Gemini and appends the response to the chat area.
      */
     private void sendMessage() {
         String userInput = inputField.getText().trim();
-        if (userInput.isEmpty()) return;
+        if (userInput.isEmpty()) {
+            return;
+        }
+        if (userInput.length() > MAX_PROMPT_LENGTH) {
+            chatArea.appendText("Error: Message is too long. Please keep it under "
+                    + MAX_PROMPT_LENGTH + " characters.\n");
+            return;
+        }
 
-        // Display user message
         chatArea.appendText("User: " + userInput + "\n");
         inputField.clear();
-
-        // Escape quotes
-        String jsonPayload = getString(userInput);
+        sendButton.setDisable(true);
 
         String apiKey = AI_Helper.getAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
             chatArea.appendText("Error: API key not found.\n");
+            sendButton.setDisable(false);
             return;
         }
 
-        String url = "https://generativelanguage.googleapis.com/"
-                + "v1beta/models/gemini-2.0-flash:generateContent?key="
-                + apiKey;
-
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(GEMINI_ENDPOINT)
+                .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .header("x-goog-api-key", apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(buildRequestPayload(userInput)))
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
-                .thenAccept(body -> Platform.runLater(() -> {
-                    String aiResponse = parseResponse(body);
-                    aiResponse = formatAIResponse(aiResponse);
-                    chatArea.appendText("AI: " + aiResponse + "\n");
+                .thenAccept(response -> Platform.runLater(() -> {
+                    String aiResponse = parseResponse(response.statusCode(), response.body());
+                    chatArea.appendText("AI: " + formatAIResponse(aiResponse) + "\n");
+                    sendButton.setDisable(false);
                 }))
                 .exceptionally(e -> {
-                    Platform.runLater(() ->
-                            chatArea.appendText("Error: " + e.getMessage() + "\n"));
+                    Platform.runLater(() -> {
+                        chatArea.appendText("Error: " + e.getMessage() + "\n");
+                        sendButton.setDisable(false);
+                    });
                     return null;
                 });
     }
 
     /**
-     * @param userInput Uses Input From User To Create JSON Payload
-     * @return JSON Payload
+     * Builds the Gemini request body with Gson so user text is escaped safely.
      */
     @NotNull
     @Contract(pure = true)
-    private static String getString(@NotNull String userInput) {
-        String safeInput = userInput.replace("\"", "\\\"");
+    static String buildRequestPayload(@NotNull String userInput) {
+        JsonObject root = new JsonObject();
 
-        // Build JSON payload with system_instruction + user content
-        String jsonPayload = "{"
-                + "\"system_instruction\": {"
-                + "    \"parts\": [{"
-                + "        \"text\": \"You are a helpful project‐planning assistant. "
-                + "When the user mentions a due date, generate task ideas, "
-                + "assign priorities, and suggest a schedule.\""
-                + "    }]"
-                + "},"
-                + "\"contents\": [{"
-                + "    \"parts\": [{"
-                + "        \"text\": \"" + safeInput + "\""
-                + "    }]"
-                + "}],"
-                + "\"generationConfig\": {"
-                + "    \"temperature\": 0.2,"       // more focused
-                + "    \"maxOutputTokens\": 512"   // adjust as needed
-                + "}"
-                + "}";
-        return jsonPayload;
+        JsonObject systemInstruction = new JsonObject();
+        JsonArray systemParts = new JsonArray();
+        JsonObject systemText = new JsonObject();
+        systemText.addProperty("text", "You are a helpful project-planning assistant. "
+                + "When the user mentions a due date, generate task ideas, assign priorities, "
+                + "and suggest a practical schedule.");
+        systemParts.add(systemText);
+        systemInstruction.add("parts", systemParts);
+        root.add("system_instruction", systemInstruction);
+
+        JsonObject userPart = new JsonObject();
+        userPart.addProperty("text", userInput);
+        JsonArray userParts = new JsonArray();
+        userParts.add(userPart);
+        JsonObject content = new JsonObject();
+        content.add("parts", userParts);
+        JsonArray contents = new JsonArray();
+        contents.add(content);
+        root.add("contents", contents);
+
+        JsonObject generationConfig = new JsonObject();
+        generationConfig.addProperty("temperature", 0.2);
+        generationConfig.addProperty("maxOutputTokens", 512);
+        root.add("generationConfig", generationConfig);
+
+        return root.toString();
     }
 
-    // Helper method to extract the "text" field from the AI response.
-    // In production, consider using a proper JSON parser like Gson or Jackson.
     /**
-     * @param responseBody Where the AI Response Is Stored
-     * @return AI Response
+     * Extracts generated text from Gemini's JSON response.
      */
     @NotNull
-    private String parseResponse(@NotNull String responseBody) {
-        int index = responseBody.indexOf("\"text\":");
-        if (index != -1) {
-            int start = responseBody.indexOf("\"", index + 7) + 1;
-            int end = responseBody.indexOf("\"", start);
-            if (start != -1 && end != -1) {
-                return responseBody.substring(start, end);
-            }
+    static String parseResponse(int statusCode, @NotNull String responseBody) {
+        if (statusCode < 200 || statusCode >= 300) {
+            return parseErrorMessage(responseBody, "AI service returned status " + statusCode + ".");
         }
-        return "Could not parse response.";
+
+        try {
+            JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
+            JsonArray candidates = root.getAsJsonArray("candidates");
+            if (candidates == null || candidates.isEmpty()) {
+                return parseErrorMessage(responseBody, "AI service returned no response.");
+            }
+
+            JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
+            JsonArray parts = content == null ? null : content.getAsJsonArray("parts");
+            if (parts == null || parts.isEmpty()) {
+                return "AI service returned an empty response.";
+            }
+
+            JsonElement text = parts.get(0).getAsJsonObject().get("text");
+            return text == null ? "AI service returned an empty response." : text.getAsString();
+        } catch (RuntimeException e) {
+            return "Could not parse AI response.";
+        }
     }
 
-    // Helper method to convert escaped newline characters (e.g., "\n")
-    // into actual newline characters for better readability.
-    /**
-     * @param response Where the AI Response Is Stored
-     * @return AI Response in the proper format
-     */
     @NotNull
     @Contract(pure = true)
-    private String formatAIResponse(@NotNull String response) {
+    static String formatAIResponse(@NotNull String response) {
         return response.replace("\\n", "\n");
+    }
+
+    private static String parseErrorMessage(String responseBody, String fallback) {
+        try {
+            JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
+            JsonObject error = root.getAsJsonObject("error");
+            if (error != null && error.has("message")) {
+                return "AI service error: " + error.get("message").getAsString();
+            }
+        } catch (RuntimeException ignored) {
+            // Keep a friendly fallback when the service returns non-JSON text.
+        }
+        return fallback;
     }
 }

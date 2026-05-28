@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
- * Simple model class representing a Task.
+ * Represents a task shown in the task table and persisted by the active storage layer.
  */
 public class Task {
     private int taskID;
@@ -16,7 +16,6 @@ public class Task {
     private String category;
     private LocalDate reminder;
 
-    // Constructor for a new task with a default status "Pending"
     /**
      * Constructor for a new task with a default status "Pending".
      * @param description The description or title of the task
@@ -32,7 +31,6 @@ public class Task {
         this.status = "Pending";
     }
 
-    // Getters and setters
     /**
      * Gets the task ID.
      * @return the task ID
@@ -163,23 +161,20 @@ public class Task {
 
     /**
      * Checks if a task is overdue.
-     * @return true if the date and time are past the
-     * due date and time, otherwise false
-      */
+     * @return true if the due date and time have passed
+     */
     public boolean isOverdue() {
-    LocalDate today = LocalDate.now();
-    LocalTime now = LocalTime.now();
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
 
         if (dueDate == null) {
             return false;
         }
 
-    if (dueDate.isBefore(today)) {
-        return true; // Past due date
-        } else if (dueDate.isEqual(today) && dueTime != null && dueTime.isBefore(now)) {
-        return true; // Due today but time's already passed
-    }
-    return false; // Not overdue
+        if (dueDate.isBefore(today)) {
+            return true;
+        }
+        return dueDate.isEqual(today) && dueTime != null && dueTime.isBefore(now);
     }
 
     /**

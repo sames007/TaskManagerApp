@@ -3,295 +3,501 @@ package edu.farmingdale.taskmanagerapp;
 import javafx.collections.ObservableList;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Types;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The DatabaseManager class is responsible for managing a connection to the database
- * and performing various operations such as user account management and task management.
+ * Manages all database access for users, authentication, profile data, and tasks.
  */
 public class DatabaseManager {
     private static final Logger LOGGER = Logger.getLogger(DatabaseManager.class.getName());
-    private static final String DB_URL = "jdbc:mysql://taskmanagerdbserver.mysql.database.azure.com:3306/TaskManagerDB";
-    private static final String USER = "adminuser";
-    private static final String PASS = "philippejean1234$";
     private static final int MAX_RETRIES = 3;
-    private static final int RETRY_DELAY_MS = 1000;
+    private static final int RETRY_DELAY_MS = 1_000;
 
+    private final String dbUrl;
+    private final String dbUser;
+    private final String dbPassword;
+    private final boolean configured;
+    private boolean available;
     private Connection conn;
 
     /**
-     * Constructor to initialize the connection
+     * Creates a database manager using DB_URL, DB_USER, and DB_PASSWORD config.
      */
     public DatabaseManager() {
-        initializeConnection();
+        this.dbUrl = AppConfig.get("DB_URL").orElse(null);
+        this.dbUser = AppConfig.get("DB_USER").orElse(null);
+        this.dbPassword = AppConfig.get("DB_PASSWORD").orElse(null);
+        this.configured = dbUrl != null && dbUser != null && dbPassword != null;
+
+        if (configured) {
+            try {
+                initializeConnection();
+            } catch (RuntimeException e) {
+                available = false;
+                LOGGER.log(Level.WARNING, "Database is configured but unavailable; continuing in offline mode.", e);
+            }
+        } else {
+            LOGGER.warning("Database is not configured. Set DB_URL, DB_USER, and DB_PASSWORD to enable it.");
+        }
     }
 
     /**
-     * Initializes the database connection.
+     * @return true when the app has the minimum database settings needed to connect
      */
-    public void initializeConnection() {
+    public boolean isConfigured() {
+        return configured;
+    }
+
+    public boolean isAvailable() {
+        return configured && available;
+    }
+
+    /**
+     * Initializes or refreshes the database connection.
+     */
+    public final void initializeConnection() {
+        if (!configured) {
+            return;
+        }
+
         int retries = 0;
         while (retries < MAX_RETRIES) {
             try {
                 Properties props = new Properties();
-                props.setProperty("user", USER);
-                props.setProperty("password", PASS);
-                props.setProperty("useSSL", "true");
-                props.setProperty("autoReconnect", "true");
-                props.setProperty("maxReconnects", "3");
+                props.setProperty("user", dbUser);
+                props.setProperty("password", dbPassword);
+                props.setProperty("sslMode", AppConfig.get("DB_SSL_MODE").orElse("REQUIRED"));
+                props.setProperty("connectTimeout", "10000");
+                props.setProperty("socketTimeout", "30000");
+                props.setProperty("enabledTLSProtocols", "TLSv1.2,TLSv1.3");
 
-                conn = DriverManager.getConnection(DB_URL, props);
-
-                // Check if the ProfilePicturePath column exists and add it if it doesn't
-                try (Statement stmt = conn.createStatement()) {
-                    // Check if a column exists
-                    ResultSet rs = conn.getMetaData().getColumns(null, null, "users", "ProfilePicturePath");
-                    if (!rs.next()) {
-                        // Column doesn't exist, so add it
-                        stmt.execute("ALTER TABLE users ADD COLUMN ProfilePicturePath VARCHAR(255)");
-                        stmt.execute("UPDATE users SET ProfilePicturePath = '/edu/farmingdale/taskmanagerapp/images/profilePicture.png'");
-                        LOGGER.log(Level.INFO, "Added ProfilePicturePath column to users table");
-                    }
-                } catch (SQLException e) {
-                    LOGGER.log(Level.WARNING, "Error checking/adding ProfilePicturePath column: " + e.getMessage());
-                }
-
+                conn = DriverManager.getConnection(dbUrl, props);
+                ensureProfilePictureColumn(conn);
+                available = true;
                 return;
             } catch (SQLException e) {
+                available = false;
                 retries++;
-                LOGGER.log(Level.SEVERE, "Error connecting to database (attempt " + retries + "): " + e.getMessage());
+                LOGGER.log(Level.SEVERE, "Error connecting to database (attempt " + retries + ")", e);
                 if (retries == MAX_RETRIES) {
-                    throw new RuntimeException("Failed to connect to database after " + MAX_RETRIES + " attempts", e);
+                    throw new IllegalStateException("Failed to connect to the database.", e);
                 }
-                try {
-                    Thread.sleep(RETRY_DELAY_MS);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Connection interrupted", ie);
-                }
+                sleepBeforeRetry();
             }
         }
     }
 
     /**
-     * @return The database connection
+     * Authenticates a user by email address or username.
      */
+    public UserSession authenticateUser(String identifier, String password) {
+        UserSession user = identifier != null && identifier.contains("@")
+                ? getAccountByEmail(identifier)
+                : getAccount(identifier);
+
+        if (user == null || !PasswordUtil.verifyPassword(password, user.getPassword())) {
+            return null;
+        }
+
+        if (PasswordUtil.needsRehash(user.getPassword())) {
+            String upgradedHash = PasswordUtil.hashPassword(password);
+            updatePasswordHash(user.getEmail(), upgradedHash);
+            user.setPassword(upgradedHash);
+        }
+
+        return user;
+    }
+
+    /**
+     * Registers a new user and stores password/security answers as salted hashes.
+     */
+    public void registerUser(@NotNull UserSession user) {
+        String sql = """
+                INSERT INTO users (UserName, PassWord, Email, SecurityQuestion, SecurityAnswer)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+
+        String passwordHash = PasswordUtil.hashPassword(user.getPassword());
+        String securityAnswerHash = PasswordUtil.hashPassword(
+                PasswordUtil.normalizeSecurityAnswer(user.getSecurityAnswer())
+        );
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, user.getUserName());
+            stmt.setString(2, passwordHash);
+            stmt.setString(3, user.getEmail());
+            stmt.setString(4, user.getSecurityQuestion());
+            stmt.setString(5, securityAnswerHash);
+
+            stmt.executeUpdate();
+            try (ResultSet keys = stmt.getGeneratedKeys()) {
+                if (keys.next()) {
+                    user.setUserID(keys.getInt(1));
+                }
+            }
+            user.setPassword(passwordHash);
+            user.setSecurityAnswer(securityAnswerHash);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new IllegalArgumentException("Username or email is already registered.", e);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error registering user.", e);
+        }
+    }
+
+    /**
+     * Looks up an account by username.
+     */
+    public UserSession getAccount(String username) {
+        String sql = """
+                SELECT UserID, UserName, Email, PassWord, SecurityQuestion, SecurityAnswer, ProfilePicturePath
+                FROM users
+                WHERE LOWER(UserName) = LOWER(?)
+                """;
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? toUserSession(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error retrieving account.", e);
+        }
+    }
+
+    /**
+     * Looks up an account by email address.
+     */
+    public UserSession getAccountByEmail(String email) {
+        String sql = """
+                SELECT UserID, UserName, Email, PassWord, SecurityQuestion, SecurityAnswer, ProfilePicturePath
+                FROM users
+                WHERE LOWER(Email) = LOWER(?)
+                """;
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? toUserSession(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error retrieving account by email.", e);
+        }
+    }
+
+    /**
+     * Updates a user's password after hashing it.
+     */
+    public boolean updatePassword(String email, String newPassword) {
+        return updatePasswordHash(email, PasswordUtil.hashPassword(newPassword));
+    }
+
+    /**
+     * Adds a task for the given user.
+     */
+    public void addTask(@NotNull Task task, int userID) {
+        String sql = """
+                INSERT INTO Tasks
+                    (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            setTaskFields(stmt, task);
+            stmt.setInt(6, userID);
+            stmt.setString(7, task.getStatus());
+            stmt.executeUpdate();
+
+            try (ResultSet keys = stmt.getGeneratedKeys()) {
+                if (keys.next()) {
+                    task.setTaskID(keys.getInt(1));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error adding task to database.", e);
+        }
+    }
+
+    /**
+     * Backward-compatible default-user task insert.
+     */
+    public void addTask(@NotNull Task task) {
+        int defaultUserId = getOrCreateDefaultUserID();
+        addTask(task, defaultUserId);
+    }
+
+    public void deleteTask(int taskID, int userID) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "DELETE FROM Tasks WHERE TaskID = ? AND FK_UserID = ?")) {
+            stmt.setInt(1, taskID);
+            stmt.setInt(2, userID);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error deleting task.", e);
+        }
+    }
+
+    public void deleteTask(int taskID) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("DELETE FROM Tasks WHERE TaskID = ?")) {
+            stmt.setInt(1, taskID);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error deleting task.", e);
+        }
+    }
+
+    /**
+     * Updates a task owned by the given user.
+     */
+    public void updateTask(@NotNull Task task, int userID) {
+        String sql = """
+                UPDATE Tasks
+                SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ?
+                WHERE TaskID = ? AND FK_UserID = ?
+                """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            setTaskFields(stmt, task);
+            stmt.setString(6, task.getStatus());
+            stmt.setInt(7, task.getTaskID());
+            stmt.setInt(8, userID);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error updating task.", e);
+        }
+    }
+
+    public void updateTask(@NotNull Task task) {
+        String sql = """
+                UPDATE Tasks
+                SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ?
+                WHERE TaskID = ?
+                """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            setTaskFields(stmt, task);
+            stmt.setString(6, task.getStatus());
+            stmt.setInt(7, task.getTaskID());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error updating task.", e);
+        }
+    }
+
+    public void markTaskComplete(int taskID, int userID) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "UPDATE Tasks SET Status = 'Completed' WHERE TaskID = ? AND FK_UserID = ?")) {
+            stmt.setInt(1, taskID);
+            stmt.setInt(2, userID);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error marking task as complete.", e);
+        }
+    }
+
+    /**
+     * Loads tasks for a single user.
+     */
+    public void loadTasks(ObservableList<Task> tasks, int userID) {
+        String sql = """
+                SELECT t.TaskID, t.Description, t.DueDate, t.DueTime, t.Status,
+                       p.PriorityLevel, c.CategoryName
+                FROM Tasks t
+                LEFT JOIN Priorities p ON t.FK_PriorityID = p.PriorityID
+                LEFT JOIN Categories c ON t.FK_CategoryID = c.CategoryID
+                WHERE t.FK_UserID = ?
+                ORDER BY t.DueDate, t.DueTime
+                """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setInt(1, userID);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Task task = new Task(
+                            rs.getString("Description"),
+                            rs.getDate("DueDate").toLocalDate(),
+                            rs.getTime("DueTime") != null ? rs.getTime("DueTime").toLocalTime() : null,
+                            rs.getString("PriorityLevel")
+                    );
+                    task.setTaskID(rs.getInt("TaskID"));
+                    task.setStatus(rs.getString("Status"));
+                    task.setCategory(rs.getString("CategoryName"));
+                    tasks.add(task);
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error loading tasks.", e);
+        }
+    }
+
+    /**
+     * Backward-compatible task load for tools that do not have a logged-in user.
+     */
+    public void loadTasks(ObservableList<Task> tasks) {
+        String sql = """
+                SELECT t.TaskID, t.Description, t.DueDate, t.DueTime, t.Status,
+                       p.PriorityLevel, c.CategoryName
+                FROM Tasks t
+                LEFT JOIN Priorities p ON t.FK_PriorityID = p.PriorityID
+                LEFT JOIN Categories c ON t.FK_CategoryID = c.CategoryID
+                ORDER BY t.DueDate, t.DueTime
+                """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Task task = new Task(
+                        rs.getString("Description"),
+                        rs.getDate("DueDate").toLocalDate(),
+                        rs.getTime("DueTime") != null ? rs.getTime("DueTime").toLocalTime() : null,
+                        rs.getString("PriorityLevel")
+                );
+                task.setTaskID(rs.getInt("TaskID"));
+                task.setStatus(rs.getString("Status"));
+                task.setCategory(rs.getString("CategoryName"));
+                tasks.add(task);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error loading tasks.", e);
+        }
+    }
+
+    /**
+     * Updates a user's profile picture path by username.
+     */
+    public void updateProfilePicture(@NotNull String userName, String profilePicturePath) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "UPDATE users SET ProfilePicturePath = ? WHERE UserName = ?")) {
+            stmt.setString(1, profilePicturePath);
+            stmt.setString(2, userName);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update profile picture.", e);
+        }
+    }
+
+    /**
+     * Updates a user's profile picture path by user ID.
+     */
+    public void updateUserProfilePicture(@NotNull UserSession user) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "UPDATE users SET ProfilePicturePath = ? WHERE UserID = ?")) {
+            stmt.setString(1, user.getProfilePicturePath());
+            stmt.setInt(2, user.getUserID());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update profile picture in database.", e);
+        }
+    }
+
+    /**
+     * Closes the database connection.
+     */
+    public void closeConnection() {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                LOGGER.log(Level.SEVERE, "Error closing database connection", e);
+            } finally {
+                conn = null;
+            }
+        }
+    }
+
+    private boolean updatePasswordHash(String email, String passwordHash) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "UPDATE users SET PassWord = ? WHERE LOWER(Email) = LOWER(?)")) {
+            stmt.setString(1, passwordHash);
+            stmt.setString(2, email);
+
+            int rows = stmt.executeUpdate();
+            if (rows == 0) {
+                throw new IllegalArgumentException("No user found with that email.");
+            }
+            return true;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error updating password.", e);
+        }
+    }
+
     private Connection getConnection() {
+        if (!configured) {
+            throw new IllegalStateException("Database is not configured. Set DB_USER and DB_PASSWORD.");
+        }
+
         try {
             if (conn == null || conn.isClosed()) {
                 initializeConnection();
             }
             return conn;
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting database connection: " + e.getMessage());
-            throw new RuntimeException("Database connection error", e);
+            throw new IllegalStateException("Database connection error.", e);
         }
     }
 
-    /**
-     * @param userName The name of the user
-     * @return The user's ID
-     */
-    private int getUserID(String userName) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT UserID FROM users WHERE UserName = ?")) {
-            stmt.setString(1, userName);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("UserID");
-                }
+    private void ensureProfilePictureColumn(Connection connection) {
+        try (ResultSet rs = connection.getMetaData().getColumns(null, null, "users", "ProfilePicturePath")) {
+            if (rs.next()) {
+                return;
+            }
+
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("ALTER TABLE users ADD COLUMN ProfilePicturePath VARCHAR(255)");
+                stmt.execute("""
+                        UPDATE users
+                        SET ProfilePicturePath = '/edu/farmingdale/taskmanagerapp/images/profilePicture.png'
+                        WHERE ProfilePicturePath IS NULL
+                        """);
             }
         } catch (SQLException e) {
-            System.out.println("Error getting user ID: " + e.getMessage());
-        }
-        return -1; // Return -1 if not found
-    }
-
-    /**
-     * Inserts a default user if none exist
-     */
-    private void insertDefaultUser() {
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO users (UserID, UserName) VALUES (?, ?)")) {
-            stmt.setInt(1, 1); // Assuming default user ID
-            stmt.setString(2, "DefaultUser");
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error inserting default user: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Unable to verify ProfilePicturePath column", e);
         }
     }
 
-    /**
-     * @param s The user session to register
-     */
-    public void registerUser(UserSession s) {
+    private UserSession toUserSession(ResultSet rs) throws SQLException {
+        UserSession session = new UserSession(
+                rs.getString("UserName"),
+                rs.getString("Email"),
+                rs.getString("PassWord"),
+                rs.getString("SecurityQuestion"),
+                rs.getString("SecurityAnswer")
+        );
+        session.setUserID(rs.getInt("UserID"));
+
         try {
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
-            Statement statement = conn.createStatement();
-            String sql = "INSERT INTO users (UserName, PassWord, Email, SecurityQuestion, SecurityAnswer) VALUES (?, ?, ?, ?, ?)";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.setString(1, s.getUserName());
-            preparedStatement.setString(2, s.getPassword());
-            preparedStatement.setString(3, s.getEmail());
-            preparedStatement.setString(4, s.getSecurityQuestion());
-            preparedStatement.setString(5, s.getSecurityAnswer());
-
-            int row = preparedStatement.executeUpdate();
-            statement.close();
-            conn.close();
-
-        } catch (Exception e) {
-
-        }
-    }
-
-    /**
-     * @param username The username of the user
-     * @return The user session
-     */
-    public UserSession getAccount(String username) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE UserName = ?")) {
-            stmt.setString(1, username);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
-                    return s;
-                } else {
-                    return null;
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+            session.setProfilePicturePath(rs.getString("ProfilePicturePath"));
+        } catch (SQLException ignored) {
+            session.setProfilePicturePath(null);
         }
 
+        return session;
     }
 
-    /**
-     * @param email The email of the user
-     * @return The user session
-     */
-    public UserSession getAccountByEmail(String email) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE Email = ?")) {
-            stmt.setString(1, email);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    UserSession s = new UserSession(rs.getString("UserName"), rs.getString("Email"), rs.getString("PassWord"), rs.getString("SecurityQuestion"), rs.getString("SecurityAnswer"));
-                    return s;
-                } else {
-                    return null;
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-
-    /**
-     * Updates password in database
-     * @param email
-     * @param newPassword
-     * @return boolean
-     */
-    public boolean updatePassword(String email, String newPassword) {
-        try {
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
-            String sql = "UPDATE users SET Password = ? WHERE Email = ?";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.setString(1, newPassword);
-            preparedStatement.setString(2, email);
-
-            int rows = preparedStatement.executeUpdate();
-            preparedStatement.close();
-            conn.close();
-
-            if (rows == 0) {
-                throw new RuntimeException("No user found with that email!");
-            }
-            return true;
-        } catch (Exception e) {
-            throw new RuntimeException("Error updating password: " + e.getMessage());
-        }
-    }
-
-    /**
-     * @param task The task to add
-     */
-    public void addTask(@NotNull Task task) {
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Tasks (Description, DueDate, DueTime, FK_PriorityID, FK_CategoryID, FK_UserID, Status) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
-            stmt.setString(1, task.getDescription());
-            stmt.setDate(2, Date.valueOf(task.getDueDate()));
+    private void setTaskFields(PreparedStatement stmt, Task task) throws SQLException {
+        stmt.setString(1, task.getDescription());
+        stmt.setDate(2, Date.valueOf(task.getDueDate()));
+        if (task.getDueTime() == null) {
+            stmt.setNull(3, Types.TIME);
+        } else {
             stmt.setTime(3, Time.valueOf(task.getDueTime()));
-            stmt.setInt(4, getPriorityID(task.getPriority()));
-            stmt.setInt(5, getCategoryID(task.getCategory()));
-
-            // Check if a user exists, otherwise insert a default user
-            int userID = getUserID("DefaultUser");
-            if (userID == -1) {
-                insertDefaultUser();
-                userID = getUserID("DefaultUser");
-            }
-
-            stmt.setInt(6, userID);
-            stmt.setString(7, task.getStatus());
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error adding task to database: " + e.getMessage());
         }
+        stmt.setInt(4, getPriorityID(task.getPriority()));
+        stmt.setInt(5, getCategoryID(task.getCategory()));
     }
 
-    public void deleteTask(int taskID) {
-        try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM Tasks WHERE TaskID = ?")) {
-            stmt.setInt(1, taskID);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error deleting task from database: " + e.getMessage());
-        }
-    }
-
-    /**
-     * @param task The task to update
-     */
-    public void updateTask(@NotNull Task task) {
-        try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Description = ?, DueDate = ?, DueTime = ?, FK_PriorityID = ?, FK_CategoryID = ?, Status = ? WHERE TaskID = ?")) {
-            stmt.setString(1, task.getDescription());
-            stmt.setDate(2, Date.valueOf(task.getDueDate()));
-            stmt.setTime(3, Time.valueOf(task.getDueTime()));
-            stmt.setInt(4, getPriorityID(task.getPriority()));
-            stmt.setInt(5, getCategoryID(task.getCategory()));
-            stmt.setString(6, task.getStatus());
-            stmt.setInt(7, task.getTaskID()); // Assuming you have a getTaskID method in Task class
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error updating task in database: " + e.getMessage());
-        }
-    }
-
-    /**
-     * @param taskID The ID of the task to mark as complete
-     */
-    public void markTaskComplete(int taskID) {
-        try (PreparedStatement stmt = conn.prepareStatement("UPDATE Tasks SET Status = 'Completed' WHERE TaskID = ?")) {
-            stmt.setInt(1, taskID);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error marking task as complete: " + e.getMessage());
-        }
-    }
-
-    // Helper methods to get IDs for priority and category
-    /**
-     * @param priority The priority level
-     * @return The priority ID
-     */
     private int getPriorityID(String priority) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT PriorityID FROM Priorities WHERE PriorityLevel = ?")) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "SELECT PriorityID FROM Priorities WHERE LOWER(PriorityLevel) = LOWER(?)")) {
             stmt.setString(1, priority);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -299,147 +505,64 @@ public class DatabaseManager {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error getting priority ID: " + e.getMessage());
+            throw new IllegalStateException("Error getting priority ID.", e);
         }
-        return -1; // Return -1 if not found
+        throw new IllegalArgumentException("Unknown priority: " + priority);
     }
 
-    /**
-     * @param category The category name
-     * @return The category ID
-     */
     private int getCategoryID(String category) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT CategoryID FROM Categories WHERE CategoryName = ?")) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "SELECT CategoryID FROM Categories WHERE LOWER(CategoryName) = LOWER(?)")) {
             stmt.setString(1, category);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt("CategoryID");
-                } else {
-                    // Insert the missing category and return its ID
-                    try (PreparedStatement insertStmt = conn.prepareStatement("INSERT INTO Categories (CategoryName) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
-                        insertStmt.setString(1, category);
-                        insertStmt.executeUpdate();
-                        try (ResultSet generatedKeys = insertStmt.getGeneratedKeys()) {
-                            if (generatedKeys.next()) {
-                                return generatedKeys.getInt(1);
-                            }
-                        }
-                    } catch (SQLException e) {
-                        System.out.println("Error inserting category: " + e.getMessage());
-                    }
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error getting category ID: " + e.getMessage());
+            throw new IllegalStateException("Error getting category ID.", e);
         }
-        return -1; // Return -1 if all else fails
-    }
 
-    // Method to retrieve all tasks from the database
-    /**
-     * @param tasks The list to add tasks to
-     */
-    public void loadTasks(ObservableList<Task> tasks) {
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM Tasks")) {
-            while (rs.next()) {
-                Task task = new Task(
-                        rs.getString("Description"),
-                        rs.getDate("DueDate").toLocalDate(),
-                        rs.getTime("DueTime") != null ? rs.getTime("DueTime").toLocalTime() : null,
-                        getPriorityName(rs.getInt("FK_PriorityID"))
-                );
-                task.setCategory(getCategoryName(rs.getInt("FK_CategoryID")));
-                task.setStatus(rs.getString("Status"));
-                task.setTaskID(rs.getInt("TaskID"));
-                tasks.add(task);
-                System.out.println("Task added to list: " + task.getDescription()); // Verify tasks are added
-            }
-        } catch (SQLException e) {
-            System.out.println("Error loading tasks from database: " + e.getMessage());
-        }
-    }
-
-    // Helper methods to get names for priority and category
-    /**
-     * @param priorityID The ID of the priority
-     * @return The priority name
-     */
-    private String getPriorityName(int priorityID) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT PriorityLevel FROM Priorities WHERE PriorityID = ?")) {
-            stmt.setInt(1, priorityID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("PriorityLevel");
+        try (PreparedStatement insertStmt = getConnection().prepareStatement(
+                "INSERT INTO Categories (CategoryName) VALUES (?)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            insertStmt.setString(1, category);
+            insertStmt.executeUpdate();
+            try (ResultSet generatedKeys = insertStmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error getting priority name: " + e.getMessage());
+            throw new IllegalStateException("Error inserting category.", e);
         }
-        return ""; // Return an empty string if not found
+
+        throw new IllegalStateException("Unable to resolve category ID.");
     }
 
-    /**
-     * @param categoryID The ID of the category
-     * @return The category name
-     */
-    private String getCategoryName(int categoryID) {
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT CategoryName FROM Categories WHERE CategoryID = ?")) {
-            stmt.setInt(1, categoryID);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("CategoryName");
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error getting category name: " + e.getMessage());
+    private int getOrCreateDefaultUserID() {
+        UserSession defaultUser = getAccount("DefaultUser");
+        if (defaultUser != null) {
+            return defaultUser.getUserID();
         }
-        return ""; // Return an empty string if not found
+
+        UserSession user = new UserSession(
+                "DefaultUser",
+                "default@example.com",
+                "DefaultPass123",
+                "Default question",
+                "Default answer"
+        );
+        registerUser(user);
+        return user.getUserID();
     }
 
-    /**
-     * @param userName The name of the user
-     * @param profilePicturePath The path to the profile picture
-     */
-    public void updateProfilePicture(@NotNull String userName, String profilePicturePath) {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "UPDATE users SET ProfilePicturePath = ? WHERE UserName = ?")) {
-            stmt.setString(1, profilePicturePath);
-            stmt.setString(2, userName);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error updating profile picture: " + e.getMessage());
-            throw new RuntimeException("Failed to update profile picture", e);
-        }
-    }
-
-    /**
-     * @param user The user session to update
-     */
-    public void updateUserProfilePicture(@NotNull UserSession user) {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "UPDATE users SET ProfilePicturePath = ? WHERE UserID = ?")) {
-            stmt.setString(1, user.getProfilePicturePath());
-            stmt.setInt(2, user.getUserID());
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.err.println("Error updating profile picture: " + e.getMessage());
-            throw new RuntimeException("Failed to update profile picture in database", e);
-        }
-    }
-
-    // Close the connection when done
-    /**
-     * Closes the database connection
-     */
-    public void closeConnection() {
-        if (conn != null) {
-            try {
-                conn.close();
-            } catch (SQLException e) {
-                LOGGER.log(Level.SEVERE, "Error closing database connection: " + e.getMessage());
-            } finally {
-                conn = null;
-            }
+    private void sleepBeforeRetry() {
+        try {
+            Thread.sleep(RETRY_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Connection interrupted.", e);
         }
     }
 }
