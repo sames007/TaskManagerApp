@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class ChatBoxControllerTest {
@@ -23,6 +26,10 @@ class ChatBoxControllerTest {
                 .getAsString();
 
         assertEquals(userText, parsedText);
+        assertEquals(
+                "application/json",
+                payload.getAsJsonObject("generationConfig").get("responseMimeType").getAsString()
+        );
     }
 
     @Test
@@ -58,6 +65,44 @@ class ChatBoxControllerTest {
                 IllegalArgumentException.class,
                 () -> ChatBoxController.buildGeminiEndpoint("../gemini-flash-latest")
         );
+    }
+
+    @Test
+    void displayNameUsesCurrentUsername() {
+        UserSession user = new UserSession("saim", "saim@example.com", "secret");
+
+        assertEquals("saim", ChatBoxController.displayNameFor(user));
+    }
+
+    @Test
+    void parseCandidateTextExtractsTaskDraft() {
+        String dueDate = LocalDate.now().plusDays(1).toString();
+        String candidateText = """
+                {
+                  "reply": "I created the task for you.",
+                  "tasks": [
+                    {
+                      "description": "Finish math homework",
+                      "dueDate": "%s",
+                      "dueTime": "18:30",
+                      "priority": "High",
+                      "category": "School",
+                      "reminder": "%s"
+                    }
+                  ]
+                }
+                """.formatted(dueDate, LocalDate.now());
+
+        ChatBoxController.AiResponse response = ChatBoxController.parseCandidateText(candidateText);
+        Task task = response.taskDrafts().get(0).toTask();
+
+        assertEquals("I created the task for you.", response.reply());
+        assertEquals("Finish math homework", task.getDescription());
+        assertEquals(LocalDate.parse(dueDate), task.getDueDate());
+        assertEquals(LocalTime.of(18, 30), task.getDueTime());
+        assertEquals("High", task.getPriority());
+        assertEquals("School", task.getCategory());
+        assertEquals(LocalDate.now(), task.getReminder());
     }
 
     @Test

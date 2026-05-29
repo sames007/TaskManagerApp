@@ -19,6 +19,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -37,6 +41,8 @@ public class ChatBoxController {
             Pattern.CASE_INSENSITIVE
     );
     private static final int MAX_PROMPT_LENGTH = 4_000;
+    private static final int MAX_TASK_DESCRIPTION_LENGTH = 200;
+    private static final LocalTime DEFAULT_AI_DUE_TIME = LocalTime.of(9, 0);
     private static final String MISSING_API_KEY_MESSAGE = "Error: Gemini API key is not configured. "
             + "Set GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY outside source control.";
     private static final String INVALID_API_KEY_MESSAGE = "AI service error: The configured Gemini API key is invalid. "
@@ -52,9 +58,16 @@ public class ChatBoxController {
     @FXML
     private TextArea chatArea;
 
+    private String userDisplayName = "You";
+    private TaskCreationHandler taskCreationHandler;
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+
+    interface TaskCreationHandler {
+        boolean createTask(Task task);
+    }
 
     /**
      * Initializes chat actions after the FXML file is loaded.
@@ -68,6 +81,11 @@ public class ChatBoxController {
                 event.consume();
             }
         });
+    }
+
+    void configure(UserSession currentUser, TaskCreationHandler taskCreationHandler) {
+        this.userDisplayName = displayNameFor(currentUser);
+        this.taskCreationHandler = taskCreationHandler;
     }
 
     /**
@@ -84,7 +102,7 @@ public class ChatBoxController {
             return;
         }
 
-        chatArea.appendText("User: " + userInput + "\n");
+        chatArea.appendText(userDisplayName + ": " + userInput + "\n");
         inputField.clear();
         sendButton.setDisable(true);
 
@@ -114,8 +132,9 @@ public class ChatBoxController {
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> Platform.runLater(() -> {
-                    String aiResponse = parseResponse(response.statusCode(), response.body());
-                    chatArea.appendText("AI: " + formatAIResponse(aiResponse) + "\n");
+                    AiResponse aiResponse = parseAiResponse(response.statusCode(), response.body());
+                    chatArea.appendText("AI: " + formatAIResponse(aiResponse.reply()) + "\n");
+                    createTasksFromDrafts(aiResponse.taskDrafts());
                     sendButton.setDisable(false);
                 }))
                 .exceptionally(e -> {
@@ -125,6 +144,30 @@ public class ChatBoxController {
                     });
                     return null;
                 });
+    }
+
+    private void createTasksFromDrafts(List<TaskDraft> taskDrafts) {
+        if (taskDrafts.isEmpty()) {
+            return;
+        }
+
+        if (taskCreationHandler == null) {
+            chatArea.appendText("AI: I drafted a task, but this chat is not connected to the task list.\n");
+            return;
+        }
+
+        for (TaskDraft draft : taskDrafts) {
+            try {
+                Task task = draft.toTask();
+                if (taskCreationHandler.createTask(task)) {
+                    chatArea.appendText("Task created: " + task.getDescription()
+                            + " (due " + task.getDueDate() + " at " + task.getDueTime() + ")\n");
+                }
+            } catch (IllegalArgumentException e) {
+                chatArea.appendText("AI: I need a little more information before creating that task. "
+                        + e.getMessage() + "\n");
+            }
+        }
     }
 
     /**
@@ -138,9 +181,14 @@ public class ChatBoxController {
         JsonObject systemInstruction = new JsonObject();
         JsonArray systemParts = new JsonArray();
         JsonObject systemText = new JsonObject();
-        systemText.addProperty("text", "You are a helpful project-planning assistant. "
-                + "When the user mentions a due date, generate task ideas, assign priorities, "
-                + "and suggest a practical schedule.");
+        systemText.addProperty("text", "You are a helpful project-planning assistant inside a task manager app. "
+                + "Today's date is " + LocalDate.now() + ". Always respond with strict JSON: "
+                + "{\"reply\":\"message for the user\",\"tasks\":[{\"description\":\"task title\","
+                + "\"dueDate\":\"YYYY-MM-DD\",\"dueTime\":\"HH:mm\",\"priority\":\"Extreme|High|Medium|Low\","
+                + "\"category\":\"School|Work|Personal|Family|Other\",\"reminder\":\"YYYY-MM-DD or null\"}]}. "
+                + "Only include tasks when the user clearly asks to create, add, make, or schedule a task. "
+                + "If a task request is missing a due date, ask for it in reply and return an empty tasks array. "
+                + "Use Medium priority and Other category when the user does not specify them.");
         systemParts.add(systemText);
         systemInstruction.add("parts", systemParts);
         root.add("system_instruction", systemInstruction);
@@ -157,7 +205,8 @@ public class ChatBoxController {
 
         JsonObject generationConfig = new JsonObject();
         generationConfig.addProperty("temperature", 0.2);
-        generationConfig.addProperty("maxOutputTokens", 512);
+        generationConfig.addProperty("maxOutputTokens", 768);
+        generationConfig.addProperty("responseMimeType", "application/json");
         root.add("generationConfig", generationConfig);
 
         return root.toString();
@@ -191,34 +240,199 @@ public class ChatBoxController {
      */
     @NotNull
     static String parseResponse(int statusCode, @NotNull String responseBody) {
+        return parseAiResponse(statusCode, responseBody).reply();
+    }
+
+    @NotNull
+    static AiResponse parseAiResponse(int statusCode, @NotNull String responseBody) {
         if (statusCode < 200 || statusCode >= 300) {
-            return parseErrorMessage(statusCode, responseBody, "AI service returned status " + statusCode + ".");
+            return new AiResponse(
+                    parseErrorMessage(statusCode, responseBody, "AI service returned status " + statusCode + "."),
+                    List.of()
+            );
         }
 
         try {
             JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonArray candidates = root.getAsJsonArray("candidates");
             if (candidates == null || candidates.isEmpty()) {
-                return parseErrorMessage(statusCode, responseBody, "AI service returned no response.");
+                return new AiResponse(
+                        parseErrorMessage(statusCode, responseBody, "AI service returned no response."),
+                        List.of()
+                );
             }
 
             JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
             JsonArray parts = content == null ? null : content.getAsJsonArray("parts");
             if (parts == null || parts.isEmpty()) {
-                return "AI service returned an empty response.";
+                return new AiResponse("AI service returned an empty response.", List.of());
             }
 
             JsonElement text = parts.get(0).getAsJsonObject().get("text");
-            return text == null ? "AI service returned an empty response." : text.getAsString();
+            return text == null
+                    ? new AiResponse("AI service returned an empty response.", List.of())
+                    : parseCandidateText(text.getAsString());
         } catch (RuntimeException e) {
-            return "Could not parse AI response.";
+            return new AiResponse("Could not parse AI response.", List.of());
         }
+    }
+
+    static AiResponse parseCandidateText(@NotNull String candidateText) {
+        Optional<JsonObject> structuredResponse = parseJsonObject(candidateText);
+        if (structuredResponse.isEmpty()) {
+            return new AiResponse(candidateText, List.of());
+        }
+
+        JsonObject root = structuredResponse.get();
+        String reply = stringValue(root.get("reply")).orElse(candidateText);
+        return new AiResponse(reply, parseTaskDrafts(root.get("tasks")));
     }
 
     @NotNull
     @Contract(pure = true)
     static String formatAIResponse(@NotNull String response) {
         return response.replace("\\n", "\n");
+    }
+
+    static String displayNameFor(UserSession currentUser) {
+        if (currentUser == null) {
+            return "You";
+        }
+
+        String username = cleanString(currentUser.getUserName());
+        if (username != null) {
+            return username;
+        }
+
+        String email = cleanString(currentUser.getEmail());
+        if (email != null) {
+            int atIndex = email.indexOf('@');
+            return atIndex > 0 ? email.substring(0, atIndex) : email;
+        }
+
+        return "You";
+    }
+
+    private static Optional<JsonObject> parseJsonObject(String candidateText) {
+        List<String> candidates = List.of(candidateText.trim(), stripJsonFence(candidateText.trim()));
+        for (String candidate : candidates) {
+            if (candidate.isBlank()) {
+                continue;
+            }
+
+            try {
+                JsonElement parsed = JsonParser.parseString(candidate);
+                if (parsed.isJsonObject()) {
+                    return Optional.of(parsed.getAsJsonObject());
+                }
+            } catch (RuntimeException ignored) {
+                // The model can still return regular text if JSON mode is unavailable.
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String stripJsonFence(String text) {
+        if (!text.startsWith("```")) {
+            return text;
+        }
+
+        int firstLineBreak = text.indexOf('\n');
+        int lastFence = text.lastIndexOf("```");
+        if (firstLineBreak < 0 || lastFence <= firstLineBreak) {
+            return text;
+        }
+
+        return text.substring(firstLineBreak + 1, lastFence).trim();
+    }
+
+    private static List<TaskDraft> parseTaskDrafts(JsonElement taskElement) {
+        if (taskElement == null || !taskElement.isJsonArray()) {
+            return List.of();
+        }
+
+        List<TaskDraft> drafts = new ArrayList<>();
+        JsonArray taskArray = taskElement.getAsJsonArray();
+        for (JsonElement element : taskArray) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+
+            JsonObject taskObject = element.getAsJsonObject();
+            drafts.add(new TaskDraft(
+                    cleanString(taskObject.get("description")),
+                    parseDate(taskObject.get("dueDate")),
+                    parseTime(taskObject.get("dueTime")),
+                    normalizePriority(cleanString(taskObject.get("priority"))),
+                    normalizeCategory(cleanString(taskObject.get("category"))),
+                    parseDate(taskObject.get("reminder"))
+            ));
+        }
+        return drafts;
+    }
+
+    private static String cleanString(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        return cleanString(element.getAsString());
+    }
+
+    private static String cleanString(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static Optional<String> stringValue(JsonElement element) {
+        return Optional.ofNullable(cleanString(element));
+    }
+
+    private static LocalDate parseDate(JsonElement element) {
+        String value = cleanString(element);
+        if (value == null || "null".equalsIgnoreCase(value)) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static LocalTime parseTime(JsonElement element) {
+        String value = cleanString(element);
+        if (value == null || "null".equalsIgnoreCase(value)) {
+            return null;
+        }
+
+        try {
+            return LocalTime.parse(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static String normalizePriority(String priority) {
+        return switch (priority == null ? "" : priority.toLowerCase(Locale.ROOT)) {
+            case "extreme" -> "Extreme";
+            case "high" -> "High";
+            case "low" -> "Low";
+            default -> "Medium";
+        };
+    }
+
+    private static String normalizeCategory(String category) {
+        return switch (category == null ? "" : category.toLowerCase(Locale.ROOT)) {
+            case "school" -> "School";
+            case "work" -> "Work";
+            case "personal" -> "Personal";
+            case "family" -> "Family";
+            default -> "Other";
+        };
     }
 
     private static String parseErrorMessage(int statusCode, String responseBody, String fallback) {
@@ -311,5 +525,39 @@ public class ChatBoxController {
             }
         }
         return false;
+    }
+
+    record AiResponse(String reply, List<TaskDraft> taskDrafts) {
+    }
+
+    record TaskDraft(
+            String description,
+            LocalDate dueDate,
+            LocalTime dueTime,
+            String priority,
+            String category,
+            LocalDate reminder
+    ) {
+        Task toTask() {
+            if (description == null) {
+                throw new IllegalArgumentException("Please include a task description.");
+            }
+            if (description.length() > MAX_TASK_DESCRIPTION_LENGTH) {
+                throw new IllegalArgumentException("Please keep the task description under "
+                        + MAX_TASK_DESCRIPTION_LENGTH + " characters.");
+            }
+            if (dueDate == null) {
+                throw new IllegalArgumentException("Please include a due date.");
+            }
+            if (dueDate.isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("The due date cannot be in the past.");
+            }
+
+            Task task = new Task(description, dueDate, dueTime == null ? DEFAULT_AI_DUE_TIME : dueTime, priority);
+            task.setCategory(category);
+            task.setStatus("In Progress");
+            task.setReminder(reminder != null && !reminder.isAfter(dueDate) ? reminder : null);
+            return task;
+        }
     }
 }

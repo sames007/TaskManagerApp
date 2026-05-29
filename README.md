@@ -11,7 +11,7 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Receive local notifications for incomplete tasks due within 24 hours.
 - Use automatic system theme detection, or manually choose light or dark mode.
 - Continue using the app when the database is unavailable through local JSON storage.
-- Use the AI assistant when a Gemini API key is configured.
+- Use the AI assistant to plan work and create tasks when a Gemini API key is configured.
 
 ## Requirements
 

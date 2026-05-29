@@ -893,31 +893,41 @@ public class TaskManagerController extends Application {
      * @param task The new task created in the dialog.
      */
     public void addNewTaskFrom(Task task) {
-        if (task != null) {
-            if (currentUser == null) {
-                showAlert("Please log in before adding tasks.");
-                return;
-            }
+        addTaskToActiveStore(task, "Error Saving Task To Database.");
+    }
 
-            tasks.add(task); // Add to the observable list
+    private boolean addTaskFromAssistant(Task task) {
+        return addTaskToActiveStore(task, "Error Saving AI-Created Task.");
+    }
 
-            if (isDatabaseAvailable()) {
-                try {
-                    dbManager.addTask(task, currentUser.getUserID());
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error saving task from dialog to database.", e);
-                    showAlert("Error Saving Task To Database.");
-                    tasks.remove(task); // Rollback UI change if DB fails
-                    return;
-                }
-            } else {
-                saveTasksLocally();
-            }
-            // Refresh the agenda if needed
-            refreshAgendaAppointments();
-        } else {
-            LOGGER.warning("addNewTaskFrom called with a null task.");
+    private boolean addTaskToActiveStore(Task task, String databaseErrorMessage) {
+        if (task == null) {
+            LOGGER.warning("Attempted to add a null task.");
+            return false;
         }
+        if (currentUser == null) {
+            showAlert("Please log in before adding tasks.");
+            return false;
+        }
+
+        tasks.add(task);
+
+        if (isDatabaseAvailable()) {
+            try {
+                dbManager.addTask(task, currentUser.getUserID());
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Error saving task to database.", e);
+                showAlert(databaseErrorMessage);
+                tasks.remove(task);
+                return false;
+            }
+        } else {
+            saveTasksLocally();
+        }
+
+        taskTable.refresh();
+        refreshAgendaAppointments();
+        return true;
     }
 
     /**
@@ -964,6 +974,8 @@ public class TaskManagerController extends Application {
                 throw new IOException("Cannot Find FXML file: ChatBoxView.fxml");
             }
             Parent chatRoot = chatLoader.load();
+            ChatBoxController chatController = chatLoader.getController();
+            chatController.configure(currentUser, this::addTaskFromAssistant);
             Stage chatStage = new Stage();
             chatStage.setTitle("AI Chat Assist");
             Scene chatScene = new Scene(chatRoot);
