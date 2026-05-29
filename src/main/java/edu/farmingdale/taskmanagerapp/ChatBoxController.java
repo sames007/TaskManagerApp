@@ -19,19 +19,31 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Controller for the AI chat window.
  */
 public class ChatBoxController {
-    private static final URI GEMINI_ENDPOINT = URI.create(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    private static final String GEMINI_ENDPOINT_BASE =
+            "https://generativelanguage.googleapis.com/v1beta/models/";
+    private static final String DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+    private static final Pattern MODEL_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
+    private static final Pattern RETRY_DELAY_PATTERN = Pattern.compile(
+            "retry in\\s+([0-9.]+)s",
+            Pattern.CASE_INSENSITIVE
     );
     private static final int MAX_PROMPT_LENGTH = 4_000;
     private static final String MISSING_API_KEY_MESSAGE = "Error: Gemini API key is not configured. "
             + "Set GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY outside source control.";
     private static final String INVALID_API_KEY_MESSAGE = "AI service error: The configured Gemini API key is invalid. "
             + "Update GEMINI_API_KEY, GOOGLE_API_KEY, or API_KEY with a valid Gemini key, then restart the app.";
+    private static final String QUOTA_EXCEEDED_MESSAGE = "AI service error: Gemini quota is exhausted for this key "
+            + "and model. Check your Google AI Studio quota/billing, wait for quota to reset, or set GEMINI_MODEL "
+            + "to another model available to this API key.";
 
     @FXML
     private TextField inputField;
@@ -83,8 +95,17 @@ public class ChatBoxController {
             return;
         }
 
+        URI endpoint;
+        try {
+            endpoint = buildGeminiEndpoint(resolveGeminiModel());
+        } catch (IllegalArgumentException e) {
+            chatArea.appendText("Error: " + e.getMessage() + "\n");
+            sendButton.setDisable(false);
+            return;
+        }
+
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(GEMINI_ENDPOINT)
+                .uri(endpoint)
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("x-goog-api-key", apiKey)
@@ -142,6 +163,29 @@ public class ChatBoxController {
         return root.toString();
     }
 
+    static String resolveGeminiModel() {
+        return AppConfig.get("GEMINI_MODEL").orElse(DEFAULT_GEMINI_MODEL);
+    }
+
+    static URI buildGeminiEndpoint(@NotNull String modelName) {
+        String normalizedModelName = normalizeModelName(modelName);
+        return URI.create(GEMINI_ENDPOINT_BASE + normalizedModelName + ":generateContent");
+    }
+
+    private static String normalizeModelName(String modelName) {
+        String normalizedModelName = modelName.trim();
+        if (normalizedModelName.startsWith("models/")) {
+            normalizedModelName = normalizedModelName.substring("models/".length());
+        }
+
+        if (!MODEL_NAME_PATTERN.matcher(normalizedModelName).matches()) {
+            throw new IllegalArgumentException(
+                    "GEMINI_MODEL must contain only letters, numbers, dots, underscores, and hyphens."
+            );
+        }
+        return normalizedModelName;
+    }
+
     /**
      * Extracts generated text from Gemini's JSON response.
      */
@@ -186,6 +230,9 @@ public class ChatBoxController {
                 if (isInvalidApiKeyError(statusCode, message, error)) {
                     return INVALID_API_KEY_MESSAGE;
                 }
+                if (isQuotaExceededError(statusCode, message, error)) {
+                    return quotaExceededMessage(message, error);
+                }
                 return "AI service error: " + message;
             }
         } catch (RuntimeException ignored) {
@@ -194,8 +241,51 @@ public class ChatBoxController {
         return fallback;
     }
 
+    private static boolean isQuotaExceededError(int statusCode, String message, JsonObject error) {
+        String normalizedMessage = message.toLowerCase(Locale.ROOT);
+        JsonElement status = error.get("status");
+        return statusCode == 429
+                || normalizedMessage.contains("quota exceeded")
+                || (status != null && "RESOURCE_EXHAUSTED".equalsIgnoreCase(status.getAsString()));
+    }
+
+    private static String quotaExceededMessage(String message, JsonObject error) {
+        StringBuilder response = new StringBuilder(QUOTA_EXCEEDED_MESSAGE);
+        Optional<String> retryDelay = extractRetryDelay(error).or(() -> extractRetryDelay(message));
+        retryDelay.ifPresent(delay -> response.append(" Google suggested retrying in ").append(delay).append("."));
+        return response.toString();
+    }
+
+    private static Optional<String> extractRetryDelay(JsonObject error) {
+        JsonArray details = error.getAsJsonArray("details");
+        if (details == null) {
+            return Optional.empty();
+        }
+
+        for (JsonElement detail : details) {
+            if (!detail.isJsonObject()) {
+                continue;
+            }
+
+            JsonObject detailObject = detail.getAsJsonObject();
+            JsonElement retryDelay = detailObject.get("retryDelay");
+            if (retryDelay != null) {
+                return Optional.of(retryDelay.getAsString());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<String> extractRetryDelay(String message) {
+        Matcher matcher = RETRY_DELAY_PATTERN.matcher(message);
+        if (matcher.find()) {
+            return Optional.of(matcher.group(1) + "s");
+        }
+        return Optional.empty();
+    }
+
     private static boolean isInvalidApiKeyError(int statusCode, String message, JsonObject error) {
-        String normalizedMessage = message.toLowerCase();
+        String normalizedMessage = message.toLowerCase(Locale.ROOT);
         if (normalizedMessage.contains("api key not valid")
                 || normalizedMessage.contains("api key invalid")
                 || normalizedMessage.contains("apikey invalid")) {

@@ -45,14 +45,49 @@ class ChatBoxControllerTest {
     }
 
     @Test
+    void buildGeminiEndpointUsesConfiguredModelName() {
+        assertEquals(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+                ChatBoxController.buildGeminiEndpoint("models/gemini-flash-latest").toString()
+        );
+    }
+
+    @Test
+    void buildGeminiEndpointRejectsUnsafeModelName() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ChatBoxController.buildGeminiEndpoint("../gemini-flash-latest")
+        );
+    }
+
+    @Test
     void parseResponseShowsServiceErrorMessage() {
         String body = """
                 {
-                  "error": { "message": "Quota exceeded" }
+                  "error": { "message": "Service unavailable" }
                 }
                 """;
 
-        assertEquals("AI service error: Quota exceeded", ChatBoxController.parseResponse(429, body));
+        assertEquals("AI service error: Service unavailable", ChatBoxController.parseResponse(500, body));
+    }
+
+    @Test
+    void parseResponseShowsQuotaGuidance() {
+        String body = """
+                {
+                  "error": {
+                    "message": "Quota exceeded for metric: generate_content_free_tier_requests. Please retry in 23.9s.",
+                    "status": "RESOURCE_EXHAUSTED"
+                  }
+                }
+                """;
+
+        assertEquals(
+                "AI service error: Gemini quota is exhausted for this key and model. "
+                        + "Check your Google AI Studio quota/billing, wait for quota to reset, or set GEMINI_MODEL "
+                        + "to another model available to this API key. Google suggested retrying in 23.9s.",
+                ChatBoxController.parseResponse(429, body)
+        );
     }
 
     @Test

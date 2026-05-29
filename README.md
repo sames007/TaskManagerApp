@@ -45,6 +45,7 @@ Optional AI assistant settings:
 - `GEMINI_API_KEY`
 - `GOOGLE_API_KEY`
 - `API_KEY`
+- `GEMINI_MODEL` (defaults to `gemini-flash-latest`)
 
 Example PowerShell setup:
 
@@ -116,6 +117,7 @@ src/test/java/edu/farmingdale/taskmanagerapp/      Unit tests
 - If the app opens in offline mode, confirm `DB_URL`, `DB_USER`, and `DB_PASSWORD` are configured.
 - If the AI assistant reports a missing key, set `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `API_KEY`.
 - If the AI assistant reports an invalid key, replace the configured Gemini key in your environment or ignored `config.local.properties` file, then restart the app.
+- If the AI assistant reports quota exhaustion, check Google AI Studio quota/billing or change `GEMINI_MODEL` to a model available to the configured key.
 - If JavaFX fails to launch, confirm `JAVA_HOME` points to JDK 23 or newer.
 - If imports fail, confirm the selected file is a supported `.csv` or `.txt` file and is within the configured size limit.
 
