@@ -14,19 +14,39 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Use the AI assistant to plan work and create tasks when a Gemini API key is configured.
 - Create simple tasks locally from clear AI-chat requests when Gemini quota is unavailable.
 
-## Screenshots
+## Application Walkthrough
 
-### Login
+This walkthrough follows the normal path through the app, from sign-in to daily task management and AI-assisted task creation.
+
+### 1. Sign In Or Create An Account
 
 ![Login screen](docs/screenshots/login.png)
 
-### Dashboard
+Start from the login screen. Existing users can sign in with their username or email, and new users can create an account with a security question for password recovery. If the database is unavailable, the app continues in offline mode and stores tasks locally.
+
+### 2. Review The Dashboard
 
 ![Task dashboard](docs/screenshots/dashboard.png)
 
-### AI Assistant
+After signing in, the dashboard shows the main task table, upcoming tasks, notification status, and the calendar agenda. The table is the primary workspace for reviewing task descriptions, due dates, due times, priorities, categories, and completion status.
+
+### 3. Create And Manage Tasks
+
+Use the task controls to add a new task with a description, due date, due time, priority, category, and optional reminder. Existing tasks can be edited, marked complete, or deleted. Changes refresh the table, upcoming-task preview, agenda, and notification indicator so the screen stays in sync.
+
+### 4. Use The AI Assistant
 
 ![AI assistant creating a task](docs/screenshots/ai-chat.png)
+
+Open the AI assistant when you want help planning or creating a task from natural language. For example, writing `I have a test tmr can you make a task for it` creates a study task due tomorrow. If Gemini is unavailable because of quota, billing, or a temporary service issue, the app shows the real Gemini error and still tries to create a simple local task from clear requests.
+
+### 5. Import, Export, And Personalize
+
+CSV import helps bring existing task lists into the app, while export saves the current task list for backup or sharing. Profile-picture upload validates file type and location before saving. The theme follows the operating system by default, and users can manually switch between system, light, and dark modes.
+
+### 6. Continue Offline
+
+The app does not require the database for everyday task management. When the database is missing or unreachable, tasks are saved to the local JSON store and separated by the email address or username used at login.
 
 ## Requirements
 
@@ -132,7 +152,7 @@ src/test/java/edu/farmingdale/taskmanagerapp/      Unit tests
 - If the app opens in offline mode, confirm `DB_URL`, `DB_USER`, and `DB_PASSWORD` are configured.
 - If the AI assistant reports a missing key, set `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `API_KEY`.
 - If the AI assistant reports an invalid key, replace the configured Gemini key in your environment or ignored `config.local.properties` file, then restart the app.
-- If the AI assistant reports quota exhaustion, check Google AI Studio quota/billing or change `GEMINI_MODEL` to a model available to the configured key.
+- If the AI assistant reports quota exhaustion, the key is valid but the current Gemini model has no remaining quota. Wait for quota to reset, check Google AI Studio quota/billing, or change `GEMINI_MODEL` to a model available to the configured key. Clear task requests can still be created locally while Gemini is unavailable.
 - If JavaFX fails to launch, confirm `JAVA_HOME` points to JDK 23 or newer.
 - If imports fail, confirm the selected file is a supported `.csv` or `.txt` file and is within the configured size limit.
 

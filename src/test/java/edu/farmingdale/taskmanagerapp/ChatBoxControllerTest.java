@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -183,6 +184,18 @@ class ChatBoxControllerTest {
                         + "to another model available to this API key. Google suggested retrying in 23.9s.",
                 ChatBoxController.parseResponse(429, body)
         );
+    }
+
+    @Test
+    void localFallbackKeepsGeminiErrorReason() {
+        ChatBoxController.AiResponse response = ChatBoxController.withLocalTaskFallback(
+                "I have a test tmr can you make a task for it",
+                new ChatBoxController.AiResponse("AI service error: Gemini quota is exhausted.", List.of())
+        );
+
+        assertTrue(response.reply().startsWith("AI service error: Gemini quota is exhausted."));
+        assertTrue(response.reply().contains("I created the task locally from your message instead."));
+        assertEquals(1, response.taskDrafts().size());
     }
 
     @Test

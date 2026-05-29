@@ -166,7 +166,7 @@ public class ChatBoxController {
                 });
     }
 
-    private static AiResponse withLocalTaskFallback(String userInput, AiResponse aiResponse) {
+    static AiResponse withLocalTaskFallback(String userInput, AiResponse aiResponse) {
         if (!aiResponse.taskDrafts().isEmpty()) {
             return aiResponse;
         }
@@ -177,7 +177,7 @@ public class ChatBoxController {
         }
 
         String reply = aiResponse.reply().startsWith("AI service error:")
-                ? "Gemini is temporarily unavailable, so I created the task locally from your message."
+                ? aiResponse.reply() + " I created the task locally from your message instead."
                 : "I created a task locally from your message.";
         return new AiResponse(reply, List.of(localDraft.get()));
     }
