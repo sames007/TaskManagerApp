@@ -70,6 +70,26 @@ class LocalTaskStoreTest {
     }
 
     @Test
+    void savesAfterDefaultStyleStoreFileIsEmpty() throws IOException {
+        Path storePath = tempDir.resolve(".taskmanagerapp").resolve("tasks.json");
+        Files.createDirectories(storePath.getParent());
+        Files.writeString(storePath, "");
+        LocalTaskStore store = new LocalTaskStore(storePath);
+        UserSession user = new UserSession("zero", "zero@example.com", "Password123");
+
+        store.saveTasks(user, List.of(new Task(
+                "Study for history test",
+                LocalDate.now().plusDays(1),
+                LocalTime.of(9, 0),
+                "Medium"
+        )));
+
+        List<Task> loadedTasks = store.loadTasks(user);
+        assertEquals(1, loadedTasks.size());
+        assertEquals("Study for history test", loadedTasks.get(0).getDescription());
+    }
+
+    @Test
     void repairsStoreWithMissingUserMap() throws IOException {
         Path storePath = tempDir.resolve("tasks.json");
         Files.writeString(storePath, "{}");

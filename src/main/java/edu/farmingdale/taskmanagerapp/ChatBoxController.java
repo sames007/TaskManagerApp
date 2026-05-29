@@ -56,6 +56,15 @@ public class ChatBoxController {
             "\\b(?:for|about)\\s+(.+?)\\s+(?:tmr|tomorrow|today|tonight|on\\b|by\\b)",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern REMIND_TASK_SUBJECT_PATTERN = Pattern.compile(
+            "\\bremind\\s+me\\s+to\\s+(.+?)\\s+(?:tmr|tomorrow|today|tonight|on\\b|by\\b)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern TASK_TO_SUBJECT_PATTERN = Pattern.compile(
+            "\\b(?:make|create|add)\\s+(?:a\\s+)?task\\s+(?:to|for)\\s+(.+?)\\s+"
+                    + "(?:tmr|tomorrow|today|tonight|on\\b|by\\b)",
+            Pattern.CASE_INSENSITIVE
+    );
     private static final int MAX_PROMPT_LENGTH = 4_000;
     private static final int MAX_CONTEXT_HISTORY_LENGTH = 6_000;
     private static final int MAX_STORED_HISTORY_LENGTH = 20_000;
@@ -144,15 +153,16 @@ public class ChatBoxController {
         inputField.clear();
         sendButton.setDisable(true);
 
+        Optional<TaskDraft> localDraft = inferLocalTaskDraft(userInput);
+        if (localDraft.isPresent()) {
+            createTasksFromDrafts(List.of(localDraft.get()));
+            sendButton.setDisable(false);
+            return;
+        }
+
         String apiKey = AI_Helper.getAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            Optional<TaskDraft> localDraft = inferLocalTaskDraft(userInput);
-            if (localDraft.isPresent()) {
-                appendConversation("AI: Gemini is not configured, so I created the task locally from your message.\n");
-                createTasksFromDrafts(List.of(localDraft.get()));
-            } else {
-                appendConversation(MISSING_API_KEY_MESSAGE + "\n");
-            }
+            appendConversation(MISSING_API_KEY_MESSAGE + "\n");
             sendButton.setDisable(false);
             return;
         }
@@ -202,8 +212,8 @@ public class ChatBoxController {
         }
 
         String reply = aiResponse.reply().startsWith("AI service error:")
-                ? aiResponse.reply() + " I created the task locally from your message instead."
-                : "I created a task locally from your message.";
+                ? aiResponse.reply() + " I found a local task draft from your message instead."
+                : "I found a local task draft from your message.";
         return new AiResponse(reply, List.of(localDraft.get()));
     }
 
@@ -224,7 +234,8 @@ public class ChatBoxController {
                     appendConversation("Task created: " + task.getDescription()
                             + " (due " + task.getDueDate() + " at " + task.getDueTime() + ")\n");
                 } else {
-                    appendConversation("AI: I drafted the task, but the app could not save it.\n");
+                    appendConversation("AI: I added the task to the list, but local storage could not confirm "
+                            + "it was saved permanently.\n");
                 }
             } catch (IllegalArgumentException e) {
                 appendConversation("AI: I need a little more information before creating that task. "
@@ -252,7 +263,8 @@ public class ChatBoxController {
                 + "Today's date is " + LocalDate.now() + ". "
                 + "Only include tasks when the user clearly asks to create, add, make, or schedule a task. "
                 + "If a task request is missing a due date, ask for it in reply and return an empty tasks array. "
-                + "Use Medium priority and Other category when the user does not specify them.");
+                + "Use Medium priority and Other category when the user does not specify them. "
+                + "Use saved conversation history only as context; do not repeat it unless the user asks.");
         systemParts.add(systemText);
         systemInstruction.add("parts", systemParts);
         root.add("system_instruction", systemInstruction);
@@ -670,6 +682,16 @@ public class ChatBoxController {
     }
 
     private static Optional<String> extractSubject(String userInput) {
+        Matcher remindMatcher = REMIND_TASK_SUBJECT_PATTERN.matcher(userInput);
+        if (remindMatcher.find()) {
+            return Optional.ofNullable(cleanString(remindMatcher.group(1)));
+        }
+
+        Matcher taskToMatcher = TASK_TO_SUBJECT_PATTERN.matcher(userInput);
+        if (taskToMatcher.find()) {
+            return Optional.ofNullable(cleanString(taskToMatcher.group(1)));
+        }
+
         Matcher haveMatcher = HAVE_TASK_SUBJECT_PATTERN.matcher(userInput);
         if (haveMatcher.find()) {
             return Optional.ofNullable(cleanString(haveMatcher.group(1)));

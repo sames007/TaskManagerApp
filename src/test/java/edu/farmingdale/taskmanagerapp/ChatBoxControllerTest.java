@@ -177,6 +177,27 @@ class ChatBoxControllerTest {
     }
 
     @Test
+    void inferLocalTaskDraftKeepsSpecificTestSubject() {
+        ChatBoxController.TaskDraft draft = ChatBoxController
+                .inferLocalTaskDraft("Hi I have a history test tmr can you make a task for it")
+                .orElseThrow();
+
+        assertEquals("Study for history test", draft.toTask().getDescription());
+    }
+
+    @Test
+    void inferLocalTaskDraftUnderstandsReminderRequests() {
+        ChatBoxController.TaskDraft draft = ChatBoxController
+                .inferLocalTaskDraft("remind me to review chapter 4 tomorrow at 7pm")
+                .orElseThrow();
+        Task task = draft.toTask();
+
+        assertEquals("Review chapter 4", task.getDescription());
+        assertEquals(LocalDate.now().plusDays(1), task.getDueDate());
+        assertEquals(LocalTime.of(19, 0), task.getDueTime());
+    }
+
+    @Test
     void storedHistoryIsTrimmedFromLineBoundary() {
         String history = "first line\nsecond line\nthird line\n";
 
@@ -224,7 +245,7 @@ class ChatBoxControllerTest {
         );
 
         assertTrue(response.reply().startsWith("AI service error: Gemini quota is exhausted."));
-        assertTrue(response.reply().contains("I created the task locally from your message instead."));
+        assertTrue(response.reply().contains("I found a local task draft from your message instead."));
         assertEquals(1, response.taskDrafts().size());
     }
 

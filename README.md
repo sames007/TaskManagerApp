@@ -39,7 +39,7 @@ Use the task controls to add a new task with a description, due date, due time, 
 
 ![AI assistant creating a task](docs/screenshots/ai-chat.png)
 
-Open the AI assistant when you want help planning or creating a task from natural language. For example, writing `I have a test tmr can you make a task for it` creates a study task due tomorrow. The app keeps one AI assistant window open at a time, reloads the user's previous chat history, and sends recent history as context so the conversation can continue naturally. If Gemini is unavailable because of quota, billing, or a temporary service issue, the app shows the real Gemini error and still tries to create a simple local task from clear requests.
+Open the AI assistant when you want help planning or creating a task from natural language. For example, writing `I have a history test tmr can you make a task for it` creates a study task due tomorrow without waiting on Gemini. The app keeps one AI assistant window open at a time, reloads the user's previous chat history, and sends recent history as context so the conversation can continue naturally. Gemini is still used for broader planning and productivity questions. If Gemini is unavailable because of quota, billing, or a temporary service issue, the app shows the real Gemini error.
 
 ### 5. Import, Export, And Personalize
 
