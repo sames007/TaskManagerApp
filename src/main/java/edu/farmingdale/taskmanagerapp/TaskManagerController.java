@@ -86,6 +86,7 @@ public class TaskManagerController extends Application {
     private UserSession currentUser;
     private final BooleanProperty hasPendingNotification = new SimpleBooleanProperty(false);
     private ContextMenu currentContextMenu = null;
+    private Stage chatStage;
     /**
      * Setter for DatabaseManager instance.
      * @param dbManager the DatabaseManager to use for DB operations.
@@ -957,6 +958,13 @@ public class TaskManagerController extends Application {
      */
     @FXML
     private void openChatWindow() {
+        if (chatStage != null && chatStage.isShowing()) {
+            chatStage.setIconified(false);
+            chatStage.toFront();
+            chatStage.requestFocus();
+            return;
+        }
+
         try {
             FXMLLoader chatLoader = new FXMLLoader(getClass().getResource("ChatBoxView.fxml"));
             if (chatLoader.getLocation() == null) {
@@ -965,13 +973,19 @@ public class TaskManagerController extends Application {
             Parent chatRoot = chatLoader.load();
             ChatBoxController chatController = chatLoader.getController();
             chatController.configure(currentUser, this::addTaskFromAssistant);
-            Stage chatStage = new Stage();
-            chatStage.setTitle("AI Chat Assist");
+            Stage newChatStage = new Stage();
+            newChatStage.setTitle("AI Chat Assist");
+            if (mainVBox != null && mainVBox.getScene() != null && mainVBox.getScene().getWindow() != null) {
+                newChatStage.initOwner(mainVBox.getScene().getWindow());
+            }
             Scene chatScene = new Scene(chatRoot);
             chatScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("styling/ChatBox.css")).toExternalForm());
             ThemeManager.bindToSystemTheme(chatScene);
-            chatStage.setScene(chatScene);
+            newChatStage.setScene(chatScene);
+            newChatStage.setOnHidden(event -> chatStage = null);
+            chatStage = newChatStage;
             chatStage.show();
+            chatStage.toFront();
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Error opening chat window.", e);
             showAlert("Cannot Open Chat Window - Check FXML File");
@@ -1244,6 +1258,7 @@ public class TaskManagerController extends Application {
      * Called when the user clicks the "Logout" button.
      */
     public void handleLogout() {
+        closeChatWindow();
         currentUser = null;
         tasks.clear();
         welcomeLabel.setText("Welcome!");
@@ -1257,6 +1272,9 @@ public class TaskManagerController extends Application {
      * @param user the user to set
      */
     public void setCurrentUser(UserSession user) {
+        if (!isSameUserSession(currentUser, user)) {
+            closeChatWindow();
+        }
         this.currentUser = user;
         if (profileManager != null) {
             profileManager.setCurrentUser(user);
@@ -1304,6 +1322,33 @@ public class TaskManagerController extends Application {
         taskTable.refresh();
         refreshAgendaAppointments();
         refreshUpcomingPreview();
+    }
+
+    private void closeChatWindow() {
+        if (chatStage != null) {
+            chatStage.close();
+            chatStage = null;
+        }
+    }
+
+    private boolean isSameUserSession(UserSession firstUser, UserSession secondUser) {
+        if (firstUser == secondUser) {
+            return true;
+        }
+        if (firstUser == null || secondUser == null) {
+            return false;
+        }
+        return Objects.equals(userSessionKey(firstUser), userSessionKey(secondUser));
+    }
+
+    private String userSessionKey(UserSession user) {
+        String email = user.getEmail();
+        if (email != null && !email.isBlank()) {
+            return email.trim().toLowerCase(Locale.ROOT);
+        }
+
+        String username = user.getUserName();
+        return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
     }
 
     /**

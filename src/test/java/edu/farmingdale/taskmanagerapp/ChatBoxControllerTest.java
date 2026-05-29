@@ -46,6 +46,26 @@ class ChatBoxControllerTest {
     }
 
     @Test
+    void buildRequestPayloadIncludesRecentHistoryWhenProvided() {
+        JsonObject payload = JsonParser.parseString(
+                ChatBoxController.buildRequestPayload("What should I do next?", "zero: I have a test tomorrow")
+        ).getAsJsonObject();
+        String parsedText = payload.getAsJsonArray("contents")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonArray("parts")
+                .get(0)
+                .getAsJsonObject()
+                .get("text")
+                .getAsString();
+
+        assertTrue(parsedText.contains("Recent saved conversation history:"));
+        assertTrue(parsedText.contains("zero: I have a test tomorrow"));
+        assertTrue(parsedText.contains("Current user message:"));
+        assertTrue(parsedText.endsWith("What should I do next?"));
+    }
+
+    @Test
     void parseResponseExtractsCandidateText() {
         String body = """
                 {
@@ -154,6 +174,16 @@ class ChatBoxControllerTest {
         assertEquals(LocalTime.of(9, 0), task.getDueTime());
         assertEquals("Medium", task.getPriority());
         assertEquals("School", task.getCategory());
+    }
+
+    @Test
+    void storedHistoryIsTrimmedFromLineBoundary() {
+        String history = "first line\nsecond line\nthird line\n";
+
+        String trimmedHistory = ChatBoxController.recentHistoryForPrompt(history.repeat(300));
+
+        assertTrue(trimmedHistory.length() <= 6_000);
+        assertTrue(trimmedHistory.startsWith("[Earlier chat history trimmed]\n"));
     }
 
     @Test

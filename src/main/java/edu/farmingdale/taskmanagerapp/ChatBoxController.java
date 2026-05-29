@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +34,7 @@ import java.util.regex.Pattern;
  * Controller for the AI chat window.
  */
 public class ChatBoxController {
+    private static final Logger LOGGER = Logger.getLogger(ChatBoxController.class.getName());
     private static final String GEMINI_ENDPOINT_BASE =
             "https://generativelanguage.googleapis.com/v1beta/models/";
     private static final String DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
@@ -54,6 +57,8 @@ public class ChatBoxController {
             Pattern.CASE_INSENSITIVE
     );
     private static final int MAX_PROMPT_LENGTH = 4_000;
+    private static final int MAX_CONTEXT_HISTORY_LENGTH = 6_000;
+    private static final int MAX_STORED_HISTORY_LENGTH = 20_000;
     private static final int MAX_TASK_DESCRIPTION_LENGTH = 200;
     private static final LocalTime DEFAULT_AI_DUE_TIME = LocalTime.of(9, 0);
     private static final String MISSING_API_KEY_MESSAGE = "Error: Gemini API key is not configured. "
@@ -69,10 +74,14 @@ public class ChatBoxController {
     @FXML
     private Button sendButton;
     @FXML
+    private Button clearHistoryButton;
+    @FXML
     private TextArea chatArea;
 
     private String userDisplayName = "You";
     private TaskCreationHandler taskCreationHandler;
+    private UserSession currentUser;
+    private final LocalChatStore chatStore = new LocalChatStore();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -88,6 +97,7 @@ public class ChatBoxController {
     @FXML
     public void initialize() {
         sendButton.setOnAction(event -> sendMessage());
+        clearHistoryButton.setOnAction(event -> clearChatHistory());
         inputField.setOnKeyPressed((KeyEvent event) -> {
             if (event.getCode() == KeyCode.ENTER) {
                 sendMessage();
@@ -97,8 +107,22 @@ public class ChatBoxController {
     }
 
     void configure(UserSession currentUser, TaskCreationHandler taskCreationHandler) {
+        this.currentUser = currentUser;
         this.userDisplayName = displayNameFor(currentUser);
         this.taskCreationHandler = taskCreationHandler;
+        loadSavedHistory();
+    }
+
+    private void loadSavedHistory() {
+        try {
+            String savedHistory = trimHistoryForStorage(chatStore.loadHistory(currentUser));
+            if (!savedHistory.isBlank()) {
+                chatArea.setText(savedHistory.endsWith("\n") ? savedHistory : savedHistory + "\n");
+                chatArea.positionCaret(chatArea.getLength());
+            }
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Unable to load saved AI chat history.", e);
+        }
     }
 
     /**
@@ -115,7 +139,8 @@ public class ChatBoxController {
             return;
         }
 
-        chatArea.appendText(userDisplayName + ": " + userInput + "\n");
+        String historyContext = recentHistoryForPrompt(chatArea.getText());
+        appendConversation(userDisplayName + ": " + userInput + "\n");
         inputField.clear();
         sendButton.setDisable(true);
 
@@ -123,10 +148,10 @@ public class ChatBoxController {
         if (apiKey == null || apiKey.isEmpty()) {
             Optional<TaskDraft> localDraft = inferLocalTaskDraft(userInput);
             if (localDraft.isPresent()) {
-                chatArea.appendText("AI: Gemini is not configured, so I created the task locally from your message.\n");
+                appendConversation("AI: Gemini is not configured, so I created the task locally from your message.\n");
                 createTasksFromDrafts(List.of(localDraft.get()));
             } else {
-                chatArea.appendText(MISSING_API_KEY_MESSAGE + "\n");
+                appendConversation(MISSING_API_KEY_MESSAGE + "\n");
             }
             sendButton.setDisable(false);
             return;
@@ -136,7 +161,7 @@ public class ChatBoxController {
         try {
             endpoint = buildGeminiEndpoint(resolveGeminiModel());
         } catch (IllegalArgumentException e) {
-            chatArea.appendText("Error: " + e.getMessage() + "\n");
+            appendConversation("Error: " + e.getMessage() + "\n");
             sendButton.setDisable(false);
             return;
         }
@@ -146,20 +171,20 @@ public class ChatBoxController {
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("x-goog-api-key", apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(buildRequestPayload(userInput)))
+                .POST(HttpRequest.BodyPublishers.ofString(buildRequestPayload(userInput, historyContext)))
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> Platform.runLater(() -> {
                     AiResponse aiResponse = parseAiResponse(response.statusCode(), response.body());
                     AiResponse finalResponse = withLocalTaskFallback(userInput, aiResponse);
-                    chatArea.appendText("AI: " + formatAIResponse(finalResponse.reply()) + "\n");
+                    appendConversation("AI: " + formatAIResponse(finalResponse.reply()) + "\n");
                     createTasksFromDrafts(finalResponse.taskDrafts());
                     sendButton.setDisable(false);
                 }))
                 .exceptionally(e -> {
                     Platform.runLater(() -> {
-                        chatArea.appendText("Error: " + e.getMessage() + "\n");
+                        appendConversation("Error: " + e.getMessage() + "\n");
                         sendButton.setDisable(false);
                     });
                     return null;
@@ -188,7 +213,7 @@ public class ChatBoxController {
         }
 
         if (taskCreationHandler == null) {
-            chatArea.appendText("AI: I drafted a task, but this chat is not connected to the task list.\n");
+            appendConversation("AI: I drafted a task, but this chat is not connected to the task list.\n");
             return;
         }
 
@@ -196,13 +221,13 @@ public class ChatBoxController {
             try {
                 Task task = draft.toTask();
                 if (taskCreationHandler.createTask(task)) {
-                    chatArea.appendText("Task created: " + task.getDescription()
+                    appendConversation("Task created: " + task.getDescription()
                             + " (due " + task.getDueDate() + " at " + task.getDueTime() + ")\n");
                 } else {
-                    chatArea.appendText("AI: I drafted the task, but the app could not save it.\n");
+                    appendConversation("AI: I drafted the task, but the app could not save it.\n");
                 }
             } catch (IllegalArgumentException e) {
-                chatArea.appendText("AI: I need a little more information before creating that task. "
+                appendConversation("AI: I need a little more information before creating that task. "
                         + e.getMessage() + "\n");
             }
         }
@@ -214,6 +239,10 @@ public class ChatBoxController {
     @NotNull
     @Contract(pure = true)
     static String buildRequestPayload(@NotNull String userInput) {
+        return buildRequestPayload(userInput, "");
+    }
+
+    static String buildRequestPayload(@NotNull String userInput, String recentHistory) {
         JsonObject root = new JsonObject();
 
         JsonObject systemInstruction = new JsonObject();
@@ -229,7 +258,7 @@ public class ChatBoxController {
         root.add("system_instruction", systemInstruction);
 
         JsonObject userPart = new JsonObject();
-        userPart.addProperty("text", userInput);
+        userPart.addProperty("text", buildPromptWithHistory(userInput, recentHistory));
         JsonArray userParts = new JsonArray();
         userParts.add(userPart);
         JsonObject content = new JsonObject();
@@ -245,6 +274,18 @@ public class ChatBoxController {
         root.add("generationConfig", generationConfig);
 
         return root.toString();
+    }
+
+    private static String buildPromptWithHistory(String userInput, String recentHistory) {
+        String cleanHistory = cleanString(recentHistory);
+        if (cleanHistory == null) {
+            return userInput;
+        }
+
+        return "Recent saved conversation history:\n"
+                + cleanHistory
+                + "\n\nCurrent user message:\n"
+                + userInput;
     }
 
     private static JsonObject buildResponseFormatSchema() {
@@ -400,6 +441,59 @@ public class ChatBoxController {
         } catch (RuntimeException e) {
             return new AiResponse("Could not parse AI response.", List.of());
         }
+    }
+
+    private void appendConversation(String text) {
+        chatArea.appendText(text);
+        persistChatHistory();
+    }
+
+    private void persistChatHistory() {
+        try {
+            String trimmedHistory = trimHistoryForStorage(chatArea.getText());
+            if (!trimmedHistory.equals(chatArea.getText())) {
+                chatArea.setText(trimmedHistory);
+                chatArea.positionCaret(chatArea.getLength());
+            }
+            chatStore.saveHistory(currentUser, trimmedHistory);
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Unable to save AI chat history.", e);
+        }
+    }
+
+    private void clearChatHistory() {
+        chatArea.clear();
+        try {
+            chatStore.clearHistory(currentUser);
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Unable to clear AI chat history.", e);
+        }
+    }
+
+    static String recentHistoryForPrompt(String history) {
+        return trimHistory(history, MAX_CONTEXT_HISTORY_LENGTH);
+    }
+
+    static String trimHistoryForStorage(String history) {
+        return trimHistory(history, MAX_STORED_HISTORY_LENGTH);
+    }
+
+    private static String trimHistory(String history, int maxLength) {
+        if (history == null) {
+            return "";
+        }
+        if (history.length() <= maxLength) {
+            return history;
+        }
+
+        String marker = "[Earlier chat history trimmed]\n";
+        int tailLength = Math.max(0, maxLength - marker.length());
+        String tail = history.substring(history.length() - tailLength);
+        int firstLineBreak = tail.indexOf('\n');
+        if (firstLineBreak >= 0 && firstLineBreak < tail.length() - 1) {
+            tail = tail.substring(firstLineBreak + 1);
+        }
+        return marker + tail;
     }
 
     private static String combineTextParts(JsonArray parts) {

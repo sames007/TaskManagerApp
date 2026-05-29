@@ -13,6 +13,7 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Continue using the app when the database is unavailable through local JSON storage.
 - Use the AI assistant to plan work and create tasks when a Gemini API key is configured.
 - Create simple tasks locally from clear AI-chat requests when Gemini quota is unavailable.
+- Resume previous AI assistant conversations from saved local chat history.
 
 ## Application Walkthrough
 
@@ -38,7 +39,7 @@ Use the task controls to add a new task with a description, due date, due time, 
 
 ![AI assistant creating a task](docs/screenshots/ai-chat.png)
 
-Open the AI assistant when you want help planning or creating a task from natural language. For example, writing `I have a test tmr can you make a task for it` creates a study task due tomorrow. If Gemini is unavailable because of quota, billing, or a temporary service issue, the app shows the real Gemini error and still tries to create a simple local task from clear requests.
+Open the AI assistant when you want help planning or creating a task from natural language. For example, writing `I have a test tmr can you make a task for it` creates a study task due tomorrow. The app keeps one AI assistant window open at a time, reloads the user's previous chat history, and sends recent history as context so the conversation can continue naturally. If Gemini is unavailable because of quota, billing, or a temporary service issue, the app shows the real Gemini error and still tries to create a simple local task from clear requests.
 
 ### 5. Import, Export, And Personalize
 
@@ -99,7 +100,13 @@ The app is designed to work without a database. When the database is not configu
 %USERPROFILE%\.taskmanagerapp\tasks.json
 ```
 
-Offline task data is separated by the email address or username used at login.
+AI chat history is saved locally at:
+
+```text
+%USERPROFILE%\.taskmanagerapp\chat-history.json
+```
+
+Offline task data and AI chat history are separated by the email address or username used at login.
 
 ## Themes
 

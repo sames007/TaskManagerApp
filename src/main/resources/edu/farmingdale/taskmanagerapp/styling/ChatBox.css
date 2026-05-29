@@ -22,6 +22,22 @@
     -fx-padding: 0 0 0 8;
 }
 
+.clear-history-button {
+    -fx-background-color: rgba(255,255,255,0.16);
+    -fx-background-radius: 18;
+    -fx-border-color: rgba(255,255,255,0.32);
+    -fx-border-radius: 18;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 12;
+    -fx-font-weight: 700;
+    -fx-padding: 7 14;
+    -fx-cursor: hand;
+}
+
+.clear-history-button:hover {
+    -fx-background-color: rgba(255,255,255,0.26);
+}
+
 .chat-content-area {
     -fx-background-color: #F6F8F5;
     -fx-background-radius: 0 0 14 14;
@@ -197,6 +213,16 @@
 
 .dark-mode .chat-header {
     -fx-background-color: #0A2F36;
+}
+
+.dark-mode .clear-history-button {
+    -fx-background-color: rgba(234,241,245,0.12);
+    -fx-border-color: rgba(234,241,245,0.28);
+    -fx-text-fill: #EAF1F5;
+}
+
+.dark-mode .clear-history-button:hover {
+    -fx-background-color: rgba(234,241,245,0.22);
 }
 
 .dark-mode .chat-content-area {
