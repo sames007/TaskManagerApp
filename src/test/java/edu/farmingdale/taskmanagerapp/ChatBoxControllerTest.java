@@ -28,7 +28,19 @@ class ChatBoxControllerTest {
         assertEquals(userText, parsedText);
         assertEquals(
                 "application/json",
-                payload.getAsJsonObject("generationConfig").get("responseMimeType").getAsString()
+                payload.getAsJsonObject("generationConfig")
+                        .getAsJsonObject("responseFormat")
+                        .getAsJsonObject("text")
+                        .get("mimeType")
+                        .getAsString()
+        );
+        assertTrue(
+                payload.getAsJsonObject("generationConfig")
+                        .getAsJsonObject("responseFormat")
+                        .getAsJsonObject("text")
+                        .getAsJsonObject("schema")
+                        .getAsJsonArray("required")
+                        .contains(JsonParser.parseString("\"tasks\""))
         );
     }
 

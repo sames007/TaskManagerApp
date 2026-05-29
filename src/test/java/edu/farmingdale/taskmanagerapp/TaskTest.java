@@ -39,7 +39,7 @@ class TaskTest {
 
     @Test
     void overdueTodayPastTime() {
-        Task pastTime = new Task("Due Today, Past Time", today, now.minusHours(1), "Low");
+        Task pastTime = new Task("Due Today, Past Time", today, LocalTime.MIN, "Low");
 
         assertTrue(pastTime.isOverdue());
     }
@@ -53,7 +53,7 @@ class TaskTest {
 
     @Test
     void overdueTodayFutureTime() {
-        Task futureTime = new Task("Due Today, Future Time", today, now.plusHours(1), "Medium");
+        Task futureTime = new Task("Due Today, Future Time", today, LocalTime.MAX, "Medium");
 
         assertFalse(futureTime.isOverdue());
     }

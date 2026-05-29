@@ -13,6 +13,20 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Continue using the app when the database is unavailable through local JSON storage.
 - Use the AI assistant to plan work and create tasks when a Gemini API key is configured.
 
+## Screenshots
+
+### Login
+
+![Login screen](docs/screenshots/login.png)
+
+### Dashboard
+
+![Task dashboard](docs/screenshots/dashboard.png)
+
+### AI Assistant
+
+![AI assistant creating a task](docs/screenshots/ai-chat.png)
+
 ## Requirements
 
 - Java JDK 23 or newer

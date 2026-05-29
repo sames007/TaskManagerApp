@@ -182,10 +182,7 @@ public class ChatBoxController {
         JsonArray systemParts = new JsonArray();
         JsonObject systemText = new JsonObject();
         systemText.addProperty("text", "You are a helpful project-planning assistant inside a task manager app. "
-                + "Today's date is " + LocalDate.now() + ". Always respond with strict JSON: "
-                + "{\"reply\":\"message for the user\",\"tasks\":[{\"description\":\"task title\","
-                + "\"dueDate\":\"YYYY-MM-DD\",\"dueTime\":\"HH:mm\",\"priority\":\"Extreme|High|Medium|Low\","
-                + "\"category\":\"School|Work|Personal|Family|Other\",\"reminder\":\"YYYY-MM-DD or null\"}]}. "
+                + "Today's date is " + LocalDate.now() + ". "
                 + "Only include tasks when the user clearly asks to create, add, make, or schedule a task. "
                 + "If a task request is missing a due date, ask for it in reply and return an empty tasks array. "
                 + "Use Medium priority and Other category when the user does not specify them.");
@@ -206,10 +203,100 @@ public class ChatBoxController {
         JsonObject generationConfig = new JsonObject();
         generationConfig.addProperty("temperature", 0.2);
         generationConfig.addProperty("maxOutputTokens", 768);
-        generationConfig.addProperty("responseMimeType", "application/json");
+        generationConfig.add("responseFormat", buildResponseFormatSchema());
         root.add("generationConfig", generationConfig);
 
         return root.toString();
+    }
+
+    private static JsonObject buildResponseFormatSchema() {
+        JsonObject textFormat = new JsonObject();
+        textFormat.addProperty("mimeType", "application/json");
+        textFormat.add("schema", buildAiResponseSchema());
+
+        JsonObject responseFormat = new JsonObject();
+        responseFormat.add("text", textFormat);
+        return responseFormat;
+    }
+
+    private static JsonObject buildAiResponseSchema() {
+        JsonObject root = schemaObject();
+
+        JsonObject properties = new JsonObject();
+        properties.add("reply", schemaString("Short message shown to the user."));
+
+        JsonObject tasks = schemaArray("Tasks to create in the app. Return an empty array when no task should be created.");
+        tasks.add("items", buildTaskDraftSchema());
+        properties.add("tasks", tasks);
+
+        root.add("properties", properties);
+        root.add("required", stringArray("reply", "tasks"));
+        root.add("propertyOrdering", stringArray("reply", "tasks"));
+        root.addProperty("additionalProperties", false);
+        return root;
+    }
+
+    private static JsonObject buildTaskDraftSchema() {
+        JsonObject task = schemaObject();
+
+        JsonObject properties = new JsonObject();
+        properties.add("description", schemaString("Clear task title, 200 characters or fewer."));
+
+        JsonObject dueDate = schemaString("Due date in YYYY-MM-DD format.");
+        dueDate.addProperty("format", "date");
+        properties.add("dueDate", dueDate);
+
+        JsonObject dueTime = schemaString("Due time in 24-hour HH:mm format.");
+        dueTime.addProperty("format", "time");
+        properties.add("dueTime", dueTime);
+
+        JsonObject priority = schemaString("Task priority.");
+        priority.add("enum", stringArray("Extreme", "High", "Medium", "Low"));
+        properties.add("priority", priority);
+
+        JsonObject category = schemaString("Task category.");
+        category.add("enum", stringArray("School", "Work", "Personal", "Family", "Other"));
+        properties.add("category", category);
+
+        JsonObject reminder = new JsonObject();
+        reminder.add("type", stringArray("string", "null"));
+        reminder.addProperty("format", "date");
+        reminder.addProperty("description", "Optional reminder date in YYYY-MM-DD format, or null.");
+        properties.add("reminder", reminder);
+
+        task.add("properties", properties);
+        task.add("required", stringArray("description", "dueDate", "dueTime", "priority", "category", "reminder"));
+        task.add("propertyOrdering", stringArray("description", "dueDate", "dueTime", "priority", "category", "reminder"));
+        task.addProperty("additionalProperties", false);
+        return task;
+    }
+
+    private static JsonObject schemaObject() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "object");
+        return schema;
+    }
+
+    private static JsonObject schemaString(String description) {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "string");
+        schema.addProperty("description", description);
+        return schema;
+    }
+
+    private static JsonObject schemaArray(String description) {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "array");
+        schema.addProperty("description", description);
+        return schema;
+    }
+
+    private static JsonArray stringArray(String... values) {
+        JsonArray array = new JsonArray();
+        for (String value : values) {
+            array.add(value);
+        }
+        return array;
     }
 
     static String resolveGeminiModel() {
