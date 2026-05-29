@@ -12,6 +12,7 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Use automatic system theme detection, or manually choose light or dark mode.
 - Continue using the app when the database is unavailable through local JSON storage.
 - Use the AI assistant to plan work and create tasks when a Gemini API key is configured.
+- Create simple tasks locally from clear AI-chat requests when Gemini quota is unavailable.
 
 ## Screenshots
 

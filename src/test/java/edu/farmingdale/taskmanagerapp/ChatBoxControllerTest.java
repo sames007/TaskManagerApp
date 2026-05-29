@@ -64,6 +64,30 @@ class ChatBoxControllerTest {
     }
 
     @Test
+    void parseResponseCombinesMultipleTextParts() {
+        String dueDate = LocalDate.now().plusDays(1).toString();
+        String body = """
+                {
+                  "candidates": [
+                    {
+                      "content": {
+                        "parts": [
+                          { "text": "{\\"reply\\":\\"Created it.\\",\\"tasks\\":[" },
+                          { "text": "{\\"description\\":\\"Study for test\\",\\"dueDate\\":\\"%s\\",\\"dueTime\\":\\"09:00\\",\\"priority\\":\\"Medium\\",\\"category\\":\\"School\\",\\"reminder\\":null}]}" }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """.formatted(dueDate);
+
+        ChatBoxController.AiResponse response = ChatBoxController.parseAiResponse(200, body);
+
+        assertEquals("Created it.", response.reply());
+        assertEquals("Study for test", response.taskDrafts().get(0).description());
+    }
+
+    @Test
     void buildGeminiEndpointUsesConfiguredModelName() {
         assertEquals(
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
@@ -115,6 +139,20 @@ class ChatBoxControllerTest {
         assertEquals("High", task.getPriority());
         assertEquals("School", task.getCategory());
         assertEquals(LocalDate.now(), task.getReminder());
+    }
+
+    @Test
+    void inferLocalTaskDraftCreatesSimpleTestTask() {
+        ChatBoxController.TaskDraft draft = ChatBoxController
+                .inferLocalTaskDraft("Hi, I have a test tmr can you make a task for it")
+                .orElseThrow();
+        Task task = draft.toTask();
+
+        assertEquals("Study for test", task.getDescription());
+        assertEquals(LocalDate.now().plusDays(1), task.getDueDate());
+        assertEquals(LocalTime.of(9, 0), task.getDueTime());
+        assertEquals("Medium", task.getPriority());
+        assertEquals("School", task.getCategory());
     }
 
     @Test

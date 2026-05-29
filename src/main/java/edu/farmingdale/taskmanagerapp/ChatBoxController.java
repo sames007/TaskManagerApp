@@ -40,6 +40,19 @@ public class ChatBoxController {
             "retry in\\s+([0-9.]+)s",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern ISO_DATE_PATTERN = Pattern.compile("\\b\\d{4}-\\d{2}-\\d{2}\\b");
+    private static final Pattern TIME_PATTERN = Pattern.compile(
+            "\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern HAVE_TASK_SUBJECT_PATTERN = Pattern.compile(
+            "\\bi\\s+have\\s+(?:a|an|the)?\\s*(.+?)\\s+(?:tmr|tomorrow|today|tonight|on\\b|by\\b)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern FOR_TASK_SUBJECT_PATTERN = Pattern.compile(
+            "\\b(?:for|about)\\s+(.+?)\\s+(?:tmr|tomorrow|today|tonight|on\\b|by\\b)",
+            Pattern.CASE_INSENSITIVE
+    );
     private static final int MAX_PROMPT_LENGTH = 4_000;
     private static final int MAX_TASK_DESCRIPTION_LENGTH = 200;
     private static final LocalTime DEFAULT_AI_DUE_TIME = LocalTime.of(9, 0);
@@ -108,7 +121,13 @@ public class ChatBoxController {
 
         String apiKey = AI_Helper.getAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            chatArea.appendText(MISSING_API_KEY_MESSAGE + "\n");
+            Optional<TaskDraft> localDraft = inferLocalTaskDraft(userInput);
+            if (localDraft.isPresent()) {
+                chatArea.appendText("AI: Gemini is not configured, so I created the task locally from your message.\n");
+                createTasksFromDrafts(List.of(localDraft.get()));
+            } else {
+                chatArea.appendText(MISSING_API_KEY_MESSAGE + "\n");
+            }
             sendButton.setDisable(false);
             return;
         }
@@ -133,8 +152,9 @@ public class ChatBoxController {
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> Platform.runLater(() -> {
                     AiResponse aiResponse = parseAiResponse(response.statusCode(), response.body());
-                    chatArea.appendText("AI: " + formatAIResponse(aiResponse.reply()) + "\n");
-                    createTasksFromDrafts(aiResponse.taskDrafts());
+                    AiResponse finalResponse = withLocalTaskFallback(userInput, aiResponse);
+                    chatArea.appendText("AI: " + formatAIResponse(finalResponse.reply()) + "\n");
+                    createTasksFromDrafts(finalResponse.taskDrafts());
                     sendButton.setDisable(false);
                 }))
                 .exceptionally(e -> {
@@ -144,6 +164,22 @@ public class ChatBoxController {
                     });
                     return null;
                 });
+    }
+
+    private static AiResponse withLocalTaskFallback(String userInput, AiResponse aiResponse) {
+        if (!aiResponse.taskDrafts().isEmpty()) {
+            return aiResponse;
+        }
+
+        Optional<TaskDraft> localDraft = inferLocalTaskDraft(userInput);
+        if (localDraft.isEmpty()) {
+            return aiResponse;
+        }
+
+        String reply = aiResponse.reply().startsWith("AI service error:")
+                ? "Gemini is temporarily unavailable, so I created the task locally from your message."
+                : "I created a task locally from your message.";
+        return new AiResponse(reply, List.of(localDraft.get()));
     }
 
     private void createTasksFromDrafts(List<TaskDraft> taskDrafts) {
@@ -355,13 +391,30 @@ public class ChatBoxController {
                 return new AiResponse("AI service returned an empty response.", List.of());
             }
 
-            JsonElement text = parts.get(0).getAsJsonObject().get("text");
+            String text = combineTextParts(parts);
             return text == null
                     ? new AiResponse("AI service returned an empty response.", List.of())
-                    : parseCandidateText(text.getAsString());
+                    : parseCandidateText(text);
         } catch (RuntimeException e) {
             return new AiResponse("Could not parse AI response.", List.of());
         }
+    }
+
+    private static String combineTextParts(JsonArray parts) {
+        StringBuilder combinedText = new StringBuilder();
+        for (JsonElement part : parts) {
+            if (!part.isJsonObject()) {
+                continue;
+            }
+
+            JsonElement text = part.getAsJsonObject().get("text");
+            if (text != null && !text.isJsonNull()) {
+                combinedText.append(text.getAsString());
+            }
+        }
+
+        String output = combinedText.toString().trim();
+        return output.isEmpty() ? null : output;
     }
 
     static AiResponse parseCandidateText(@NotNull String candidateText) {
@@ -398,6 +451,164 @@ public class ChatBoxController {
         }
 
         return "You";
+    }
+
+    static Optional<TaskDraft> inferLocalTaskDraft(@NotNull String userInput) {
+        String normalizedInput = userInput.trim();
+        String lowerInput = normalizedInput.toLowerCase(Locale.ROOT);
+        if (!looksLikeTaskCreationRequest(lowerInput)) {
+            return Optional.empty();
+        }
+
+        LocalDate dueDate = inferDueDate(lowerInput);
+        if (dueDate == null) {
+            return Optional.empty();
+        }
+
+        String description = inferTaskDescription(normalizedInput);
+        LocalTime dueTime = inferDueTime(normalizedInput).orElse(DEFAULT_AI_DUE_TIME);
+        String category = inferCategory(lowerInput);
+        LocalDate reminder = dueDate.isAfter(LocalDate.now()) ? LocalDate.now() : null;
+        return Optional.of(new TaskDraft(description, dueDate, dueTime, "Medium", category, reminder));
+    }
+
+    private static boolean looksLikeTaskCreationRequest(String lowerInput) {
+        return lowerInput.contains("make a task")
+                || lowerInput.contains("create a task")
+                || lowerInput.contains("add a task")
+                || lowerInput.contains("make task")
+                || lowerInput.contains("create task")
+                || lowerInput.contains("add task")
+                || lowerInput.contains("schedule")
+                || lowerInput.contains("remind me");
+    }
+
+    private static LocalDate inferDueDate(String lowerInput) {
+        Matcher dateMatcher = ISO_DATE_PATTERN.matcher(lowerInput);
+        if (dateMatcher.find()) {
+            try {
+                return LocalDate.parse(dateMatcher.group());
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
+
+        if (lowerInput.contains("tmr") || lowerInput.contains("tomorrow")) {
+            return LocalDate.now().plusDays(1);
+        }
+        if (lowerInput.contains("today") || lowerInput.contains("tonight")) {
+            return LocalDate.now();
+        }
+        if (lowerInput.contains("next week")) {
+            return LocalDate.now().plusWeeks(1);
+        }
+        return null;
+    }
+
+    private static Optional<LocalTime> inferDueTime(String userInput) {
+        Matcher matcher = TIME_PATTERN.matcher(userInput);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        int hour = Integer.parseInt(matcher.group(1));
+        int minute = matcher.group(2) == null ? 0 : Integer.parseInt(matcher.group(2));
+        String amPm = matcher.group(3);
+
+        if (minute < 0 || minute > 59 || hour < 1 || hour > 23) {
+            return Optional.empty();
+        }
+        if (amPm != null) {
+            if (hour > 12) {
+                return Optional.empty();
+            }
+            if ("pm".equalsIgnoreCase(amPm) && hour < 12) {
+                hour += 12;
+            } else if ("am".equalsIgnoreCase(amPm) && hour == 12) {
+                hour = 0;
+            }
+        }
+
+        try {
+            return Optional.of(LocalTime.of(hour, minute));
+        } catch (RuntimeException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private static String inferTaskDescription(String userInput) {
+        String subject = extractSubject(userInput).orElse(null);
+        if (subject == null) {
+            String lowerInput = userInput.toLowerCase(Locale.ROOT);
+            if (lowerInput.contains("test") || lowerInput.contains("exam") || lowerInput.contains("quiz")) {
+                subject = "test";
+            } else if (lowerInput.contains("homework")) {
+                subject = "homework";
+            } else if (lowerInput.contains("project")) {
+                subject = "project";
+            } else if (lowerInput.contains("meeting")) {
+                subject = "meeting";
+            } else {
+                subject = "task";
+            }
+        }
+
+        String cleanedSubject = subject.replaceAll("\\b(can you|please|make|create|add|task|for it)\\b", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (cleanedSubject.isBlank()) {
+            cleanedSubject = "task";
+        }
+
+        String lowerSubject = cleanedSubject.toLowerCase(Locale.ROOT);
+        if (lowerSubject.contains("test") || lowerSubject.contains("exam") || lowerSubject.contains("quiz")) {
+            return "Study for " + cleanedSubject;
+        }
+        if (lowerSubject.contains("homework")) {
+            return "Complete " + cleanedSubject;
+        }
+        if (lowerSubject.contains("meeting")) {
+            return "Prepare for " + cleanedSubject;
+        }
+        return capitalize(cleanedSubject);
+    }
+
+    private static Optional<String> extractSubject(String userInput) {
+        Matcher haveMatcher = HAVE_TASK_SUBJECT_PATTERN.matcher(userInput);
+        if (haveMatcher.find()) {
+            return Optional.ofNullable(cleanString(haveMatcher.group(1)));
+        }
+
+        Matcher forMatcher = FOR_TASK_SUBJECT_PATTERN.matcher(userInput);
+        if (forMatcher.find()) {
+            return Optional.ofNullable(cleanString(forMatcher.group(1)));
+        }
+        return Optional.empty();
+    }
+
+    private static String inferCategory(String lowerInput) {
+        if (lowerInput.contains("test")
+                || lowerInput.contains("exam")
+                || lowerInput.contains("quiz")
+                || lowerInput.contains("homework")
+                || lowerInput.contains("school")
+                || lowerInput.contains("class")) {
+            return "School";
+        }
+        if (lowerInput.contains("work") || lowerInput.contains("meeting") || lowerInput.contains("client")) {
+            return "Work";
+        }
+        if (lowerInput.contains("family")) {
+            return "Family";
+        }
+        return "Other";
+    }
+
+    private static String capitalize(String value) {
+        if (value.isBlank()) {
+            return value;
+        }
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
     }
 
     private static Optional<JsonObject> parseJsonObject(String candidateText) {
