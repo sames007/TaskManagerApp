@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -44,11 +46,21 @@ class LocalTaskStore {
     List<Task> loadTasks(UserSession user) {
         StoreData data = readStore();
         List<TaskRecord> records = data.tasksByUser.getOrDefault(userKey(user), List.of());
+        if (records == null) {
+            return List.of();
+        }
         List<Task> tasks = new ArrayList<>();
         for (TaskRecord record : records) {
-            Task task = record.toTask();
-            if (task != null) {
-                tasks.add(task);
+            if (record == null) {
+                continue;
+            }
+            try {
+                Task task = record.toTask();
+                if (task != null) {
+                    tasks.add(task);
+                }
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Skipping invalid task in local task store.", e);
             }
         }
         return tasks;
@@ -57,9 +69,13 @@ class LocalTaskStore {
     void saveTasks(UserSession user, List<Task> tasks) {
         StoreData data = readStore();
         List<TaskRecord> records = new ArrayList<>();
-        int nextId = nextTaskId(tasks);
+        List<Task> tasksToSave = tasks == null ? List.of() : tasks;
+        int nextId = nextTaskId(tasksToSave);
 
-        for (Task task : tasks) {
+        for (Task task : tasksToSave) {
+            if (task == null) {
+                continue;
+            }
             if (task.getTaskID() <= 0) {
                 task.setTaskID(nextId++);
             }
@@ -77,7 +93,7 @@ class LocalTaskStore {
 
         try (Reader reader = Files.newBufferedReader(storePath, StandardCharsets.UTF_8)) {
             StoreData data = GSON.fromJson(reader, StoreData.class);
-            return data == null ? new StoreData() : data;
+            return normalizeStoreData(data);
         } catch (IOException | RuntimeException e) {
             LOGGER.log(Level.WARNING, "Unable to read local task store; starting with an empty list.", e);
             return new StoreData();
@@ -85,28 +101,75 @@ class LocalTaskStore {
     }
 
     private void writeStore(StoreData data) {
+        Path tempPath = null;
         try {
-            Files.createDirectories(storePath.getParent());
-            try (Writer writer = Files.newBufferedWriter(storePath, StandardCharsets.UTF_8)) {
+            Path parent = storePath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+
+            tempPath = parent == null
+                    ? Files.createTempFile("tasks", ".json.tmp")
+                    : Files.createTempFile(parent, "tasks", ".json.tmp");
+            try (Writer writer = Files.newBufferedWriter(tempPath, StandardCharsets.UTF_8)) {
                 GSON.toJson(data, writer);
             }
+
+            try {
+                Files.move(tempPath, storePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tempPath, storePath, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
+            deleteIncompleteTempFile(tempPath);
             throw new IllegalStateException("Unable to save local tasks.", e);
+        }
+    }
+
+    private void deleteIncompleteTempFile(Path tempPath) {
+        if (tempPath == null) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(tempPath);
+        } catch (IOException cleanupError) {
+            LOGGER.log(Level.FINE, "Unable to delete incomplete local task temp file.", cleanupError);
         }
     }
 
     private int nextTaskId(List<Task> tasks) {
         return tasks.stream()
+                .filter(task -> task != null)
                 .mapToInt(Task::getTaskID)
                 .max()
                 .orElse(0) + 1;
     }
 
     private String userKey(UserSession user) {
-        String identifier = user.getEmail() == null || user.getEmail().isBlank()
-                ? user.getUserName()
-                : user.getEmail();
-        return identifier.trim().toLowerCase(Locale.ROOT);
+        if (user == null) {
+            return "local-user";
+        }
+
+        String identifier = firstNonBlank(user.getEmail(), user.getUserName());
+        return identifier.toLowerCase(Locale.ROOT);
+    }
+
+    private StoreData normalizeStoreData(StoreData data) {
+        StoreData normalized = data == null ? new StoreData() : data;
+        if (normalized.tasksByUser == null) {
+            normalized.tasksByUser = new HashMap<>();
+        }
+        return normalized;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return "local-user";
     }
 
     private static class StoreData {

@@ -931,18 +931,16 @@ public class TaskManagerController extends Application {
             } catch (Exception e) {
                 LOGGER.log(Level.WARNING, "Database save failed; saving task locally instead.", e);
                 if (!saveTasksLocallySafely()) {
-                    tasks.remove(task);
+                    refreshTaskViews();
                     return false;
                 }
             }
         } else if (!saveTasksLocallySafely()) {
-            tasks.remove(task);
+            refreshTaskViews();
             return false;
         }
 
-        taskTable.refresh();
-        refreshAgendaAppointments();
-        refreshUpcomingPreview();
+        refreshTaskViews();
         return true;
     }
 
@@ -1300,6 +1298,12 @@ public class TaskManagerController extends Application {
             showAlert("Error Saving Task Locally.");
             return false;
         }
+    }
+
+    private void refreshTaskViews() {
+        taskTable.refresh();
+        refreshAgendaAppointments();
+        refreshUpcomingPreview();
     }
 
     /**

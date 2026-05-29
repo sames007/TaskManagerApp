@@ -3,6 +3,8 @@ package edu.farmingdale.taskmanagerapp;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -48,5 +50,39 @@ class LocalTaskStoreTest {
 
         assertEquals(1, store.loadTasks(firstUser).size());
         assertTrue(store.loadTasks(secondUser).isEmpty());
+    }
+
+    @Test
+    void savesAfterExistingStoreFileIsEmpty() throws IOException {
+        Path storePath = tempDir.resolve("tasks.json");
+        Files.writeString(storePath, "");
+        LocalTaskStore store = new LocalTaskStore(storePath);
+        UserSession user = new UserSession("offline", "offline@example.com", "Password123");
+
+        store.saveTasks(user, List.of(new Task(
+                "Recovered task",
+                LocalDate.now().plusDays(1),
+                LocalTime.NOON,
+                "Medium"
+        )));
+
+        assertEquals(1, store.loadTasks(user).size());
+    }
+
+    @Test
+    void repairsStoreWithMissingUserMap() throws IOException {
+        Path storePath = tempDir.resolve("tasks.json");
+        Files.writeString(storePath, "{}");
+        LocalTaskStore store = new LocalTaskStore(storePath);
+        UserSession user = new UserSession("offline", "", "Password123");
+
+        store.saveTasks(user, List.of(new Task(
+                "Username fallback task",
+                LocalDate.now().plusDays(1),
+                LocalTime.NOON,
+                "Medium"
+        )));
+
+        assertEquals(1, store.loadTasks(user).size());
     }
 }
