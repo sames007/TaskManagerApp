@@ -211,7 +211,7 @@ public class ChatBoxController {
 
     private static JsonObject buildResponseFormatSchema() {
         JsonObject textFormat = new JsonObject();
-        textFormat.addProperty("mimeType", "application/json");
+        textFormat.addProperty("mimeType", "APPLICATION_JSON");
         textFormat.add("schema", buildAiResponseSchema());
 
         JsonObject responseFormat = new JsonObject();

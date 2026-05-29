@@ -27,7 +27,7 @@ class ChatBoxControllerTest {
 
         assertEquals(userText, parsedText);
         assertEquals(
-                "application/json",
+                "APPLICATION_JSON",
                 payload.getAsJsonObject("generationConfig")
                         .getAsJsonObject("responseFormat")
                         .getAsJsonObject("text")
