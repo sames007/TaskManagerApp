@@ -198,6 +198,8 @@ public class ChatBoxController {
                 if (taskCreationHandler.createTask(task)) {
                     chatArea.appendText("Task created: " + task.getDescription()
                             + " (due " + task.getDueDate() + " at " + task.getDueTime() + ")\n");
+                } else {
+                    chatArea.appendText("AI: I drafted the task, but the app could not save it.\n");
                 }
             } catch (IllegalArgumentException e) {
                 chatArea.appendText("AI: I need a little more information before creating that task. "

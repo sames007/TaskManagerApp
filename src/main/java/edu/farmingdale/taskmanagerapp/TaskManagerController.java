@@ -551,7 +551,7 @@ public class TaskManagerController extends Application {
             return;
         }
 
-        if (isDatabaseAvailable()) {
+        if (shouldUseDatabaseForCurrentUser()) {
             try {
                 dbManager.loadTasks(tasks, currentUser.getUserID());
             } catch (RuntimeException e) {
@@ -731,10 +731,17 @@ public class TaskManagerController extends Application {
             if (currentUser == null) {
                 throw new IllegalStateException("Please log in before updating tasks.");
             }
-            if (isDatabaseAvailable()) {
-                dbManager.updateTask(selectedTask, currentUser.getUserID());
-            } else {
-                saveTasksLocally();
+            if (shouldUseDatabaseForCurrentUser()) {
+                try {
+                    dbManager.updateTask(selectedTask, currentUser.getUserID());
+                } catch (RuntimeException e) {
+                    LOGGER.log(Level.WARNING, "Database status update failed; saving task locally.", e);
+                    if (!saveTasksLocallySafely()) {
+                        throw e;
+                    }
+                }
+            } else if (!saveTasksLocallySafely()) {
+                throw new IllegalStateException("Unable to save task locally.");
             }
             taskTable.refresh();
             refreshAgendaAppointments();
@@ -769,12 +776,18 @@ public class TaskManagerController extends Application {
                     if (currentUser == null) {
                         throw new IllegalStateException("Please log in before deleting tasks.");
                     }
-                    if (isDatabaseAvailable()) {
-                        dbManager.deleteTask(selectedTask.getTaskID(), currentUser.getUserID());
+                    boolean deletedInDatabase = false;
+                    if (shouldUseDatabaseForCurrentUser()) {
+                        try {
+                            dbManager.deleteTask(selectedTask.getTaskID(), currentUser.getUserID());
+                            deletedInDatabase = true;
+                        } catch (RuntimeException e) {
+                            LOGGER.log(Level.WARNING, "Database delete failed; deleting task locally.", e);
+                        }
                     }
                     tasks.remove(selectedTask);
-                    if (!isDatabaseAvailable()) {
-                        saveTasksLocally();
+                    if (!deletedInDatabase) {
+                        saveTasksLocallySafely();
                     }
                     taskTable.refresh();
                     refreshAgendaAppointments();
@@ -893,14 +906,14 @@ public class TaskManagerController extends Application {
      * @param task The new task created in the dialog.
      */
     public void addNewTaskFrom(Task task) {
-        addTaskToActiveStore(task, "Error Saving Task To Database.");
+        addTaskToActiveStore(task);
     }
 
     private boolean addTaskFromAssistant(Task task) {
-        return addTaskToActiveStore(task, "Error Saving AI-Created Task.");
+        return addTaskToActiveStore(task);
     }
 
-    private boolean addTaskToActiveStore(Task task, String databaseErrorMessage) {
+    private boolean addTaskToActiveStore(Task task) {
         if (task == null) {
             LOGGER.warning("Attempted to add a null task.");
             return false;
@@ -912,21 +925,24 @@ public class TaskManagerController extends Application {
 
         tasks.add(task);
 
-        if (isDatabaseAvailable()) {
+        if (shouldUseDatabaseForCurrentUser()) {
             try {
                 dbManager.addTask(task, currentUser.getUserID());
             } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error saving task to database.", e);
-                showAlert(databaseErrorMessage);
-                tasks.remove(task);
-                return false;
+                LOGGER.log(Level.WARNING, "Database save failed; saving task locally instead.", e);
+                if (!saveTasksLocallySafely()) {
+                    tasks.remove(task);
+                    return false;
+                }
             }
-        } else {
-            saveTasksLocally();
+        } else if (!saveTasksLocallySafely()) {
+            tasks.remove(task);
+            return false;
         }
 
         taskTable.refresh();
         refreshAgendaAppointments();
+        refreshUpcomingPreview();
         return true;
     }
 
@@ -935,32 +951,7 @@ public class TaskManagerController extends Application {
      * @param task the task to add
      */
     public void addImportedTask(Task task) {
-        if (task != null) {
-            if (currentUser == null) {
-                showAlert("Please log in before importing tasks.");
-                return;
-            }
-
-            if (isDatabaseAvailable()) {
-                try {
-                    dbManager.addTask(task, currentUser.getUserID());
-                    tasks.add(task);
-                    taskTable.refresh();
-                    refreshAgendaAppointments();
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error saving imported task to database.", e);
-                    showAlert("Error Saving To Database.");
-                    return;
-                }
-            } else {
-                tasks.add(task);
-                saveTasksLocally();
-                taskTable.refresh();
-                refreshAgendaAppointments();
-            }
-        } else {
-            LOGGER.warning("Attempted to add a null imported task.");
-        }
+        addTaskToActiveStore(task);
     }
 
     /**
@@ -1054,16 +1045,16 @@ public class TaskManagerController extends Application {
             return;
         }
 
-        if (isDatabaseAvailable()) {
+        if (shouldUseDatabaseForCurrentUser()) {
             try {
                 dbManager.updateTask(taskToEdit, currentUser.getUserID());
             } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error updating task in database.", e);
-                showAlert("Error Updating Task In Database");
+                LOGGER.log(Level.WARNING, "Database task update failed; saving task locally.", e);
+                saveTasksLocallySafely();
             }
 
         } else {
-            saveTasksLocally();
+            saveTasksLocallySafely();
         }
 
         taskTable.refresh();
@@ -1290,9 +1281,24 @@ public class TaskManagerController extends Application {
         return dbManager != null && dbManager.isAvailable();
     }
 
+    private boolean shouldUseDatabaseForCurrentUser() {
+        return currentUser != null && currentUser.getUserID() > 0 && isDatabaseAvailable();
+    }
+
     private void saveTasksLocally() {
         if (currentUser != null) {
             localTaskStore.saveTasks(currentUser, tasks);
+        }
+    }
+
+    private boolean saveTasksLocallySafely() {
+        try {
+            saveTasksLocally();
+            return true;
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.WARNING, "Error saving task list to local storage.", e);
+            showAlert("Error Saving Task Locally.");
+            return false;
         }
     }
 
