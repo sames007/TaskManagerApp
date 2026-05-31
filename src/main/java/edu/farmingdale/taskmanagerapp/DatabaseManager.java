@@ -46,7 +46,8 @@ public class DatabaseManager {
                 initializeConnection();
             } catch (RuntimeException e) {
                 available = false;
-                LOGGER.log(Level.WARNING, "Database is configured but unavailable; continuing in offline mode.", e);
+                LOGGER.warning("Database is configured but unavailable; continuing in offline mode. "
+                        + rootCauseMessage(e));
             }
         } else {
             LOGGER.warning("Database is not configured. Set DB_URL, DB_USER, and DB_PASSWORD to enable it.");
@@ -90,7 +91,7 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 available = false;
                 retries++;
-                LOGGER.log(Level.SEVERE, "Error connecting to database (attempt " + retries + ")", e);
+                LOGGER.warning("Database connection attempt " + retries + " failed. " + rootCauseMessage(e));
                 if (retries == MAX_RETRIES) {
                     throw new IllegalStateException("Failed to connect to the database.", e);
                 }
@@ -564,5 +565,17 @@ public class DatabaseManager {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Connection interrupted.", e);
         }
+    }
+
+    private String rootCauseMessage(Throwable error) {
+        Throwable current = error;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message.lines().findFirst().orElse(current.getClass().getSimpleName());
     }
 }

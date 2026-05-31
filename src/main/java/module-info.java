@@ -10,6 +10,6 @@ module edu.farmingdale.taskmanagerapp {
     requires java.prefs;
     requires com.google.gson;
 
-    opens edu.farmingdale.taskmanagerapp to javafx.fxml;
+    opens edu.farmingdale.taskmanagerapp to javafx.fxml, com.google.gson;
     exports edu.farmingdale.taskmanagerapp;
 }
