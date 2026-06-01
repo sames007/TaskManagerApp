@@ -15,12 +15,6 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 - Create simple tasks locally from clear AI-chat requests when Gemini quota is unavailable.
 - Resume previous AI assistant conversations from saved local chat history.
 
-## Application Walkthrough
-
-This walkthrough follows the normal path through the app, from sign-in to daily task management and AI-assisted task creation.
-
-![Animated walkthrough of the Task Management System](docs/screenshots/app-walkthrough.gif)
-
 ### 1. Sign In Or Create An Account
 
 ![Login screen](docs/screenshots/login.png)
@@ -155,15 +149,6 @@ src/main/java/edu/farmingdale/taskmanagerapp/      Application controllers and s
 src/main/resources/edu/farmingdale/taskmanagerapp/ FXML views, images, CSS, and config template
 src/test/java/edu/farmingdale/taskmanagerapp/      Unit tests
 ```
-
-## Troubleshooting
-
-- If the app opens in offline mode, confirm `DB_URL`, `DB_USER`, and `DB_PASSWORD` are configured.
-- If the AI assistant reports a missing key, set `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `API_KEY`.
-- If the AI assistant reports an invalid key, replace the configured Gemini key in your environment or ignored `config.local.properties` file, then restart the app.
-- If the AI assistant reports quota exhaustion, the key is valid but the current Gemini model has no remaining quota. Wait for quota to reset, check Google AI Studio quota/billing, or change `GEMINI_MODEL` to a model available to the configured key. Clear task requests can still be created locally while Gemini is unavailable.
-- If JavaFX fails to launch, confirm `JAVA_HOME` points to JDK 23 or newer.
-- If imports fail, confirm the selected file is a supported `.csv` or `.txt` file and is within the configured size limit.
 
 ## Contributors
 
