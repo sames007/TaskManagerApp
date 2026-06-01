@@ -19,6 +19,8 @@ A JavaFX desktop application for managing personal, school, work, and family tas
 
 This walkthrough follows the normal path through the app, from sign-in to daily task management and AI-assisted task creation.
 
+![Animated walkthrough of the Task Management System](docs/screenshots/app-walkthrough.gif)
+
 ### 1. Sign In Or Create An Account
 
 ![Login screen](docs/screenshots/login.png)
